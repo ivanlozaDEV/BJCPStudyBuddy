@@ -17,6 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { getOffFlavors } from '@/data/offflavors';
 import { BottomTabInset, Fonts, Spacing } from '@/constants/theme';
+import { OffFlavorIcon } from '@/components/offflavor-icons';
+import { fuzzyMatch } from '@/utils/fuzzy';
 
 export default function OffFlavorsScreen() {
   const theme = useTheme();
@@ -27,13 +29,9 @@ export default function OffFlavorsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Filtered list
+  // Filtered list using hybrid multi-field fuzzy search
   const filteredOffFlavors = offFlavorsList.filter(o => 
-    o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.chemical.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.sensation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.origin.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyMatch(searchQuery, [o.name, o.sensation, o.causes, o.prevention])
   );
 
   const toggleExpand = (id: string) => {
@@ -104,62 +102,48 @@ export default function OffFlavorsScreen() {
                     style={styles.cardHeader}
                   >
                     <View style={styles.cardHeaderLeft}>
+                      <OffFlavorIcon id={item.id} size={34} />
                       <Text style={styles.defectName}>{item.name}</Text>
-                      <Text style={[styles.defectChemical, { color: theme.textSecondary }]}>
-                        {item.chemical}
-                      </Text>
                     </View>
                     <Text style={[styles.expandArrow, { color: theme.tint }]}>
                       {isExpanded ? '▲' : '▼'}
                     </Text>
                   </Pressable>
 
-                  {/* Expanded Sensory Panels */}
+                  {/* Expanded Sensory Panels (Tastes Like, Possible Causes, How to Avoid) */}
                   {isExpanded && (
                     <View style={styles.cardBody}>
-                      {/* Sensation Description Badge */}
+                      
+                      {/* 1. TASTES / SMELLS LIKE */}
                       <View style={styles.sensationBadge}>
                         <Text style={styles.sensationBadgeHeader}>
-                          {language === 'es' ? 'PERFIL AROMÁTICO / SENSORIAL' : 'SENSORY PERCEPTION'}
+                          👅 {language === 'es' ? 'SABOR Y OLOR (TASTES/SMELLS LIKE)' : 'TASTES / SMELLS LIKE'}
                         </Text>
                         <Text style={styles.sensationBadgeText}>
                           {item.sensation}
                         </Text>
                       </View>
 
-                      {/* Threshold & Chemical tag row */}
-                      <View style={styles.metaRow}>
-                        <View style={[styles.metaTag, { backgroundColor: theme.backgroundSelected }]}>
-                          <Text style={[styles.metaTagLabel, { color: theme.textSecondary }]}>
-                            {t('threshold')}
-                          </Text>
-                          <Text style={styles.metaTagValue}>{item.threshold}</Text>
-                        </View>
-                      </View>
-
-                      {/* Detail Compartment 1: Description */}
+                      {/* 2. POSSIBLE CAUSES */}
                       <View style={styles.detailCompartment}>
-                        <Text style={styles.compartmentTitle}>🔬 {t('sensoryDescription')}</Text>
+                        <Text style={styles.compartmentTitle}>
+                          🔬 {language === 'es' ? 'CAUSAS POSIBLES (POSSIBLE CAUSES)' : 'POSSIBLE CAUSES'}
+                        </Text>
                         <Text style={[styles.compartmentText, { color: theme.text }]}>
-                          {item.description}
+                          {item.causes}
                         </Text>
                       </View>
 
-                      {/* Detail Compartment 2: Origin */}
+                      {/* 3. HOW TO AVOID */}
                       <View style={styles.detailCompartment}>
-                        <Text style={styles.compartmentTitle}>🌾 {t('originCauses')}</Text>
-                        <Text style={[styles.compartmentText, { color: theme.text }]}>
-                          {item.origin}
+                        <Text style={styles.compartmentTitle}>
+                          🛡️ {language === 'es' ? 'CÓMO EVITAR (HOW TO AVOID)' : 'HOW TO AVOID'}
                         </Text>
-                      </View>
-
-                      {/* Detail Compartment 3: Prevention */}
-                      <View style={styles.detailCompartment}>
-                        <Text style={styles.compartmentTitle}>🛡️ {t('prevention')}</Text>
                         <Text style={[styles.compartmentText, { color: theme.text }]}>
                           {item.prevention}
                         </Text>
                       </View>
+
                     </View>
                   )}
                 </View>
@@ -258,15 +242,13 @@ const styles = StyleSheet.create({
   },
   cardHeaderLeft: {
     flex: 1,
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   defectName: {
     fontSize: 16,
     fontWeight: '700',
-  },
-  defectChemical: {
-    fontSize: 12,
-    fontFamily: Fonts.spaceGrotesk,
   },
   expandArrow: {
     fontSize: 12,
@@ -298,28 +280,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  metaTag: {
-    flex: 1,
-    borderRadius: Spacing.two,
-    padding: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaTagLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  metaTagValue: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   detailCompartment: {
     backgroundColor: 'rgba(0,0,0,0.02)',

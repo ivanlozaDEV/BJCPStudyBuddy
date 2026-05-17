@@ -73,12 +73,62 @@ export interface BilingualBeerStyle {
 // 1. Raw array of 108 fully processed bilingual styles
 export const BILINGUAL_BJCP_DATA = rawBilingualData as BilingualBeerStyle[];
 
+// Official BJCP 2021 Categories mapping in Spanish and English
+const BJCP_CATEGORIES: Record<string, { es: string; en: string }> = {
+  '1': { en: 'Standard American Beer', es: 'Cerveza Americana Estándar' },
+  '2': { en: 'European Pale Lager', es: 'Lager Pálida Europea' },
+  '3': { en: 'Czech Lager', es: 'Lager Checa' },
+  '4': { en: 'Pale Malty European Lager', es: 'Lager Europea Pálida y Maltosa' },
+  '5': { en: 'Pale Bitter European Lager', es: 'Lager Europea Pálida y Amarga' },
+  '6': { en: 'Amber Malty European Lager', es: 'Lager Europea Ámbar y Maltosa' },
+  '7': { en: 'Amber Bitter European Lager', es: 'Lager Europea Ámbar y Amarga' },
+  '8': { en: 'Dark European Lager', es: 'Lager Europea Oscura' },
+  '9': { en: 'Strong European Lager', es: 'Lager Europea Fuerte' },
+  '10': { en: 'German Wheat Beer', es: 'Cerveza de Trigo Alemana' },
+  '11': { en: 'British Bitter', es: 'Bitter Británica' },
+  '12': { en: 'Pale Commonwealth Beer', es: 'Cerveza Commonwealth Pálida' },
+  '13': { en: 'Brown British Beer', es: 'Cerveza Británica Marrón' },
+  '14': { en: 'Scottish Ale', es: 'Ale Escocesa' },
+  '15': { en: 'Irish Beer', es: 'Cerveza Irlandesa' },
+  '16': { en: 'Dark British Beer', es: 'Cerveza Británica Oscura' },
+  '17': { en: 'Strong British Ale', es: 'Ale Británica Fuerte' },
+  '18': { en: 'Pale American Ale', es: 'Ale Americana Pálida' },
+  '19': { en: 'Amber and Brown American Beer', es: 'Cerveza Americana Ámbar y Marrón' },
+  '20': { en: 'American Porter and Stout', es: 'Porter y Stout Americana' },
+  '21': { en: 'IPA', es: 'IPA' },
+  '22': { en: 'Strong American Ale', es: 'Ale Americana Fuerte' },
+  '23': { en: 'European Sour Ale', es: 'Ale Ácida Europea' },
+  '24': { en: 'Belgian Ale', es: 'Ale Belga' },
+  '25': { en: 'Strong Belgian Ale', es: 'Ale Belga Fuerte' },
+  '26': { en: 'Monastic Ale', es: 'Ale Monástica' },
+  '27': { en: 'Historical Beer', es: 'Cerveza Histórica' },
+  '28': { en: 'American Wild Ale', es: 'Ale Salvaje Americana' },
+  '29': { en: 'Fruit Beer', es: 'Cerveza con Fruta' },
+  '30': { en: 'Spiced Beer', es: 'Cerveza con Especias' },
+  '31': { en: 'Alternative Fermentables Beer', es: 'Cerveza con Fermentables Alternativos' },
+  '32': { en: 'Smoked Beer', es: 'Cerveza Ahumada' },
+  '33': { en: 'Wood-Aged Beer', es: 'Cerveza Envejecida en Madera' },
+  '34': { en: 'Specialty Beer', es: 'Cerveza de Especialidad' }
+};
+
+export function getCorrectCategory(styleId: string, lang: 'es' | 'en'): string {
+  const match = styleId.match(/^(\d+)/);
+  if (match) {
+    const num = match[1];
+    const cat = BJCP_CATEGORIES[num];
+    if (cat) {
+      return `${num}. ${lang === 'es' ? cat.es : cat.en}`;
+    }
+  }
+  return `${styleId.match(/^(\d+)/)?.[1] || ''}. Style`;
+}
+
 // 2. Helper to project a raw bilingual style into a single-language structure
 export function localizeStyle(style: BilingualBeerStyle, lang: 'es' | 'en'): BeerStyle {
   return {
     id: style.id,
     name: lang === 'es' ? style.name_es : style.name_en,
-    category: lang === 'es' ? style.category_es : style.category_en,
+    category: getCorrectCategory(style.id, lang),
     overallImpression: lang === 'es' ? style.overallImpression_es : style.overallImpression_en,
     aroma: lang === 'es' ? style.aroma_es : style.aroma_en,
     appearance: lang === 'es' ? style.appearance_es : style.appearance_en,

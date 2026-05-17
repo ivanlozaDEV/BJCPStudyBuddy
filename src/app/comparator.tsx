@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { getBJCPStyles, BeerStyle } from '@/data/bjcp2021';
+import { fuzzyMatch } from '@/utils/fuzzy';
 import { BottomTabInset, Fonts, Spacing } from '@/constants/theme';
 
 // Helper to convert SRM values to actual hex beer colors for premium UI barometers
@@ -51,11 +52,9 @@ export default function ComparatorScreen() {
   // Descriptive comparison active tab
   const [activeTab, setActiveTab] = useState<'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history'>('impression');
 
-  // Filtered styles for the picker modal
+  // Filtered styles for the picker modal using multi-field fuzzy search
   const filteredStyles = stylesList.filter(s => 
-    s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.category.toLowerCase().includes(searchQuery.toLowerCase())
+    fuzzyMatch(searchQuery, [s.id, s.name, s.category])
   );
 
   const openPicker = (picker: 'A' | 'B') => {

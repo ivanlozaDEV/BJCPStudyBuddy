@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   TextInput, 
-  FlatList, 
+  SectionList, 
   Pressable, 
   View, 
   Modal, 
@@ -10,22 +10,20 @@ import {
   useColorScheme,
   Text
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { 
   BeerStyle, 
-  getBJCPStyles, 
-  searchBeerStyles, 
-  getAllCategories 
+  getBJCPStyles 
 } from '@/data/bjcp2021';
+import { fuzzyMatch } from '@/utils/fuzzy';
 
-// SRM Color Mapping Helper for Visual WOW factor
+// SRM Color Mapping Helper for Visual SRM bars
 function getSRMColor(srm: number): string {
   if (srm <= 2.5) return '#F8F753'; // Light straw
   if (srm <= 4.5) return '#F2C75C'; // Pale gold
@@ -37,16 +35,37 @@ function getSRMColor(srm: number): string {
   return '#080402'; // Stout Black
 }
 
+// Helper to get text contrast color based on SRM value inside the glass
+function getSRMContrastColor(srm: number): string {
+  // Light beer colors get charcoal text, dark beer colors get white text
+  return srm <= 12.5 ? '#0A0C10' : '#FFFFFF';
+}
+
+// Volume Options Definitions
+const abvLevels = [
+  { value: 'all', label: 'Todos', desc: 'Cualquier alcohol' },
+  { value: 'low', label: 'Suave', desc: '<4.5% ABV' },
+  { value: 'mid', label: 'Medio', desc: '4.5% - 6.5%' },
+  { value: 'high', label: 'Fuerte', desc: '>6.5% ABV' },
+] as const;
+
+const ibuLevels = [
+  { value: 'all', label: 'Todos', desc: 'Cualquier amargor' },
+  { value: 'low', label: 'Bajo', desc: '<20 IBU' },
+  { value: 'mid', label: 'Medio', desc: '20 - 45 IBU' },
+  { value: 'high', label: 'Alto', desc: '>45 IBU' },
+] as const;
+
 export default function ExploreScreen() {
   const params = useLocalSearchParams<{ search?: string }>();
   const theme = useTheme();
-  const scheme = useColorScheme();
-  const insets = useSafeAreaInsets();
   const { t, language } = useTranslation();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Volume Filters: 'all' | 'low' | 'mid' | 'high'
   const [abvFilter, setAbvFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
   const [ibuFilter, setIbuFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
 
@@ -58,59 +77,164 @@ export default function ExploreScreen() {
   useEffect(() => {
     if (params.search) {
       setSearchQuery(params.search);
-      setSelectedCategory(null);
+      setIsSearching(true);
       setAbvFilter('all');
       setIbuFilter('all');
     }
   }, [params.search]);
 
-  // Categories list
-  const categories = getAllCategories(language);
-
   // Handlers
   const handleClearFilters = () => {
     setSearchQuery('');
-    setSelectedCategory(null);
+    setIsSearching(false);
     setAbvFilter('all');
     setIbuFilter('all');
   };
 
-  // Filter Logic
-  const filteredStyles = getBJCPStyles(language).filter(style => {
-    // 1. Text Search
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchText = 
-        style.id.toLowerCase().includes(q) ||
-        style.name.toLowerCase().includes(q) ||
-        style.category.toLowerCase().includes(q) ||
-        style.tags.some(t => t.toLowerCase().includes(q)) ||
-        style.overallImpression.toLowerCase().includes(q);
-      if (!matchText) return false;
+  // Extract sorting value for Category group ordering (e.g. "1A" -> 1.01, "21B" -> 21.02, "X1" -> 99.01)
+  const getCategorySortValue = (styleId: string) => {
+    const match = styleId.match(/^(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      const letter = styleId.match(/^(\d+)([A-Z]?)/)?.[2] || '';
+      const letterVal = letter ? letter.charCodeAt(0) - 64 : 0;
+      return num + letterVal / 100;
     }
-
-    // 2. Category Filter
-    if (selectedCategory && style.category !== selectedCategory) {
-      return false;
+    if (styleId.startsWith('X')) {
+      const subNum = parseInt(styleId.substring(1), 10) || 0;
+      return 100 + subNum / 100;
     }
+    return 999;
+  };
 
-    // 3. ABV Filter
-    // low (<4.5%), mid (4.5% - 6.5%), high (>6.5%)
-    if (abvFilter === 'low' && style.abvMax > 4.5) return false;
-    if (abvFilter === 'mid' && (style.abvMin > 6.5 || style.abvMax < 4.5)) return false;
-    if (abvFilter === 'high' && style.abvMin < 6.5) return false;
+  // Filter & Sort Logic
+  const processedStyles = getBJCPStyles(language)
+    .filter(style => {
+      // 1. Text Search using hybrid multi-field fuzzy search
+      if (searchQuery) {
+        const matchText = fuzzyMatch(searchQuery, [
+          style.id,
+          style.name,
+          style.category,
+          style.overallImpression,
+          ...style.tags
+        ]);
+        if (!matchText) return false;
+      }
 
-    // 4. IBU Filter
-    // low (<20), mid (20-45), high (>45)
-    if (ibuFilter === 'low' && style.ibuMax > 20) return false;
-    if (ibuFilter === 'mid' && (style.ibuMin > 45 || style.ibuMax < 20)) return false;
-    if (ibuFilter === 'high' && style.ibuMin < 45) return false;
+      // 2. ABV Volume Filter
+      if (abvFilter === 'low' && style.abvMax > 4.5) return false;
+      if (abvFilter === 'mid' && (style.abvMin > 6.5 || style.abvMax < 4.5)) return false;
+      if (abvFilter === 'high' && style.abvMin < 6.5) return false;
 
-    return true;
+      // 3. IBU Volume Filter
+      if (ibuFilter === 'low' && style.ibuMax > 20) return false;
+      if (ibuFilter === 'mid' && (style.ibuMin > 45 || style.ibuMax < 20)) return false;
+      if (ibuFilter === 'high' && style.ibuMin < 45) return false;
+
+      return true;
+    })
+    .sort((a, b) => {
+      return getCategorySortValue(a.id) - getCategorySortValue(b.id);
+    });
+
+  // Group styles into Section structure dynamically
+  const sections: { title: string; data: BeerStyle[] }[] = [];
+  processedStyles.forEach(style => {
+    const lastSection = sections[sections.length - 1];
+    if (lastSection && lastSection.title === style.category) {
+      lastSection.data.push(style);
+    } else {
+      sections.push({
+        title: style.category,
+        data: [style]
+      });
+    }
   });
 
+  // Render Equalizer Volume Filters in Hi-Fi Audio Visualizer Style
+  const renderAbvVolumeControl = () => {
+    const activeIndex = abvLevels.findIndex(opt => opt.value === abvFilter);
+    return (
+      <View style={styles.volumeColumn}>
+        <Text style={styles.filterGroupLabel}>{t('abvFilter')}</Text>
+        <View style={styles.volumeEqualizerTrack}>
+          {abvLevels.map((opt, idx) => {
+            const isLit = idx <= activeIndex;
+            const barHeight = 10 + idx * 7;
+            return (
+              <Pressable 
+                key={opt.value}
+                onPress={() => setAbvFilter(opt.value)}
+                style={styles.volumeBarTouch}
+              >
+                <View 
+                  style={[
+                    styles.volumeEqualizerBar, 
+                    { 
+                      height: barHeight, 
+                      backgroundColor: isLit ? '#D99B26' : 'rgba(255, 255, 255, 0.2)' 
+                    }
+                  ]} 
+                />
+                <Text style={[
+                  styles.volumeLevelShortLabel,
+                  { color: abvFilter === opt.value ? '#D99B26' : 'rgba(255,255,255,0.4)' }
+                ]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.volumeDescText}>{abvLevels[activeIndex].desc}</Text>
+      </View>
+    );
+  };
+
+  const renderIbuVolumeControl = () => {
+    const activeIndex = ibuLevels.findIndex(opt => opt.value === ibuFilter);
+    return (
+      <View style={styles.volumeColumn}>
+        <Text style={styles.filterGroupLabel}>{t('ibuFilter')}</Text>
+        <View style={styles.volumeEqualizerTrack}>
+          {ibuLevels.map((opt, idx) => {
+            const isLit = idx <= activeIndex;
+            const barHeight = 10 + idx * 7;
+            return (
+              <Pressable 
+                key={opt.value}
+                onPress={() => setIbuFilter(opt.value)}
+                style={styles.volumeBarTouch}
+              >
+                <View 
+                  style={[
+                    styles.volumeEqualizerBar, 
+                    { 
+                      height: barHeight, 
+                      backgroundColor: isLit ? '#D99B26' : 'rgba(255, 255, 255, 0.2)' 
+                    }
+                  ]} 
+                />
+                <Text style={[
+                  styles.volumeLevelShortLabel,
+                  { color: ibuFilter === opt.value ? '#D99B26' : 'rgba(255,255,255,0.4)' }
+                ]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.volumeDescText}>{ibuLevels[activeIndex].desc}</Text>
+      </View>
+    );
+  };
+
   const renderStyleItem = ({ item }: { item: BeerStyle }) => {
-    const cardSrmColor = getSRMColor((item.srmMin + item.srmMax) / 2);
+    const avgSrm = (item.srmMin + item.srmMax) / 2;
+    const cardSrmColor = getSRMColor(avgSrm);
+    const contrastColor = getSRMContrastColor(avgSrm);
 
     return (
       <Pressable 
@@ -120,44 +244,61 @@ export default function ExploreScreen() {
         }}
         style={({ pressed }) => [
           styles.styleCard, 
-          { backgroundColor: theme.backgroundElement },
           pressed && styles.cardPressed
         ]}
       >
         <View style={styles.cardHeader}>
-          {/* Visual Color Bar representing Beer SRM */}
-          <View style={[styles.srmIndicator, { backgroundColor: cardSrmColor }]} />
+          {/* German Beer Stein/Mug Icon containing Style ID and SRM Color */}
+          <View style={styles.beerGlassContainer}>
+            {/* Curved Glass Handle on the left side of the Mug */}
+            <View style={styles.beerGlassHandle} />
+
+            {/* Puffy Foam Head Base */}
+            <View style={styles.beerGlassFoam}>
+              {/* Extra foam bubble on top of the collar for fluffiness */}
+              <View style={styles.beerGlassFoamBubble} />
+            </View>
+            
+            {/* Beer Mug Body filled with SRM Color, highlight and carbonation bubbles */}
+            <View style={[styles.beerGlassLiquid, { backgroundColor: cardSrmColor }]}>
+              {/* Cold glass reflection highlight line */}
+              <View style={styles.beerGlassHighlight} />
+
+              {/* Rising Carbonation micro-bubbles */}
+              <View style={styles.beerGlassBubble1} />
+              <View style={styles.beerGlassBubble2} />
+
+              {/* Centered Style ID */}
+              <Text style={[styles.beerGlassText, { color: contrastColor }]}>
+                {item.id}
+              </Text>
+            </View>
+          </View>
           
           <View style={styles.cardInfo}>
             <View style={styles.cardTitleRow}>
-              <ThemedText type="smallBold" style={[styles.styleId, { color: theme.tint }]}>
-                {item.id}
-              </ThemedText>
-              <ThemedText type="default" style={styles.styleName} numberOfLines={1}>
+              <Text style={styles.styleName} numberOfLines={1}>
                 {item.name}
-              </ThemedText>
+              </Text>
             </View>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.styleCategory}>
-              {item.category}
-            </ThemedText>
           </View>
         </View>
 
-        <ThemedText type="small" style={styles.cardSummary} numberOfLines={2}>
+        <Text style={styles.cardSummary} numberOfLines={2}>
           {item.overallImpression}
-        </ThemedText>
+        </Text>
 
-        {/* Vital stats small badges */}
+        {/* Vital stats minimal row */}
         <View style={styles.vitalStatsRow}>
-          <ThemedText type="code" style={styles.vitalStatLabel}>
-            ABV: <Text style={{ color: theme.text }}>{item.vitalStatistics.abv}</Text>
-          </ThemedText>
-          <ThemedText type="code" style={styles.vitalStatLabel}>
-            IBU: <Text style={{ color: theme.text }}>{item.vitalStatistics.ibu}</Text>
-          </ThemedText>
-          <ThemedText type="code" style={styles.vitalStatLabel}>
-            SRM: <Text style={{ color: theme.text }}>{item.vitalStatistics.srm}</Text>
-          </ThemedText>
+          <Text style={styles.vitalStatLabel}>
+            ABV: <Text style={styles.vitalStatValue}>{item.vitalStatistics.abv}</Text>
+          </Text>
+          <Text style={styles.vitalStatLabel}>
+            IBU: <Text style={styles.vitalStatValue}>{item.vitalStatistics.ibu}</Text>
+          </Text>
+          <Text style={styles.vitalStatLabel}>
+            SRM: <Text style={styles.vitalStatValue}>{item.vitalStatistics.srm}</Text>
+          </Text>
         </View>
       </Pressable>
     );
@@ -166,179 +307,109 @@ export default function ExploreScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Sticky Header with Search */}
+        
+        {/* Minimalist Header with Toggleable Search */}
         <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Pressable 
-              onPress={() => router.back()}
-              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-            >
-              <ThemedText style={[styles.backText, { color: theme.tint }]}>
-                {t('back')}
-              </ThemedText>
-            </Pressable>
-            <ThemedText type="subtitle" style={styles.headerTitle}>
-              {t('exploreStyles')}
-            </ThemedText>
-          </View>
-          
-          {/* Search Input */}
-          <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText style={styles.searchIcon}>🔍</ThemedText>
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t('searchPlaceholder')}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.searchInput, { color: theme.text }]}
-              clearButtonMode="while-editing"
-            />
-            {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery('')} style={styles.clearSearchBtn}>
-                <ThemedText style={{ color: theme.tint }}>✕</ThemedText>
+          {!isSearching ? (
+            <View style={styles.headerTop}>
+              <Pressable 
+                onPress={() => router.back()}
+                style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.backText}>←</Text>
               </Pressable>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Scrollable Filters Block */}
-        <View style={styles.filterSection}>
-          {/* Categories Pill Selector */}
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}
-          >
-            <Pressable 
-              onPress={() => setSelectedCategory(null)}
-              style={[
-                styles.categoryPill, 
-                { backgroundColor: selectedCategory === null ? theme.tint : theme.backgroundElement }
-              ]}
-            >
-              <ThemedText type="smallBold" style={[
-                styles.categoryPillText, 
-                { color: selectedCategory === null ? '#100E0D' : theme.text }
-              ]}>
-                Todos
-              </ThemedText>
-            </Pressable>
-
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat;
-              // Shorten category names for pills (e.g. "21. IPA" -> "IPA")
-              const cleanName = cat.replace(/^\d+\.\s+/, '');
-
-              return (
+              
+              <Text style={styles.headerTitle}>
+                {t('exploreStyles')}
+              </Text>
+              
+              <Pressable 
+                onPress={() => setIsSearching(true)}
+                style={({ pressed }) => [styles.searchToggleButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.searchToggleIcon}>🔍</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={[styles.headerSearchActive, { 
+              backgroundColor: theme.backgroundElement,
+              borderColor: theme.border
+            }]}>
+              <Pressable 
+                onPress={() => {
+                  setIsSearching(false);
+                  setSearchQuery('');
+                }}
+                style={({ pressed }) => [styles.searchCloseBtn, pressed && styles.pressed]}
+              >
+                <Text style={[styles.searchBackArrow, { color: theme.text }]}>←</Text>
+              </Pressable>
+              
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t('searchPlaceholder')}
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.searchInputActive, { color: theme.text }]}
+                clearButtonMode="while-editing"
+                autoFocus
+              />
+              
+              {searchQuery ? (
                 <Pressable 
-                  key={cat}
-                  onPress={() => setSelectedCategory(cat)}
-                  style={[
-                    styles.categoryPill, 
-                    { backgroundColor: isSelected ? theme.tint : theme.backgroundElement }
-                  ]}
+                  onPress={() => setSearchQuery('')} 
+                  style={({ pressed }) => [styles.searchInlineClearBtn, pressed && styles.pressed]}
                 >
-                  <ThemedText type="smallBold" style={[
-                    styles.categoryPillText, 
-                    { color: isSelected ? '#100E0D' : theme.text }
-                  ]}>
-                    {cleanName}
-                  </ThemedText>
+                  <Text style={[styles.searchInlineClearText, { color: theme.tint }]}>✕</Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Quick Technical Stats Selectors */}
-          <View style={styles.quickFiltersContainer}>
-            {/* ABV Filter */}
-            <View style={styles.filterColumn}>
-              <ThemedText type="code" style={styles.filterGroupLabel}>GRADUACIÓN (ABV)</ThemedText>
-              <View style={[styles.filterSelector, { backgroundColor: theme.backgroundElement }]}>
-                {([
-                  { label: 'Todos', value: 'all' },
-                  { label: '<4.5%', value: 'low' },
-                  { label: '4.5-6.5%', value: 'mid' },
-                  { label: '>6.5%', value: 'high' }
-                ] as const).map(opt => (
-                  <Pressable 
-                    key={opt.value}
-                    onPress={() => setAbvFilter(opt.value)}
-                    style={[
-                      styles.filterOption,
-                      abvFilter === opt.value && { backgroundColor: theme.backgroundSelected }
-                    ]}
-                  >
-                    <ThemedText style={[
-                      styles.filterOptionText,
-                      abvFilter === opt.value && { fontWeight: '700', color: theme.tint }
-                    ]}>
-                      {opt.label}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
+              ) : null}
             </View>
+          )}
+        </View>
 
-            {/* IBU Filter */}
-            <View style={styles.filterColumn}>
-              <ThemedText type="code" style={styles.filterGroupLabel}>AMARGOR (IBU)</ThemedText>
-              <View style={[styles.filterSelector, { backgroundColor: theme.backgroundElement }]}>
-                {([
-                  { label: 'Todos', value: 'all' },
-                  { label: 'Bajo', value: 'low' },
-                  { label: 'Medio', value: 'mid' },
-                  { label: 'Alto', value: 'high' }
-                ] as const).map(opt => (
-                  <Pressable 
-                    key={opt.value}
-                    onPress={() => setIbuFilter(opt.value)}
-                    style={[
-                      styles.filterOption,
-                      ibuFilter === opt.value && { backgroundColor: theme.backgroundSelected }
-                    ]}
-                  >
-                    <ThemedText style={[
-                      styles.filterOptionText,
-                      ibuFilter === opt.value && { fontWeight: '700', color: theme.tint }
-                    ]}>
-                      {opt.label}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+        {/* Minimalist Volume Equalizer Controls Side-by-Side */}
+        <View style={styles.volumeFiltersPanel}>
+          <View style={styles.volumeEqualizersRow}>
+            {renderAbvVolumeControl()}
+            <View style={styles.volumeDividerColumn} />
+            {renderIbuVolumeControl()}
           </View>
         </View>
 
-        {/* Results Counter and Clean Button */}
+        {/* Results Counter and Clean Filters */}
         <View style={styles.resultsHeader}>
-          <ThemedText type="small" themeColor="textSecondary">
-            {filteredStyles.length} estilos encontrados
-          </ThemedText>
-          {(searchQuery || selectedCategory || abvFilter !== 'all' || ibuFilter !== 'all') ? (
+          <Text style={styles.resultsCounterText}>
+            {processedStyles.length} {t('foundStyles')}
+          </Text>
+          {(searchQuery || abvFilter !== 'all' || ibuFilter !== 'all') ? (
             <Pressable onPress={handleClearFilters}>
-              <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                Limpiar filtros
-              </ThemedText>
+              <Text style={styles.clearFiltersText}>
+                {t('clearFilters')}
+              </Text>
             </Pressable>
           ) : null}
         </View>
 
-        {/* Styles list */}
-        <FlatList
-          data={filteredStyles}
+        {/* Categories Grouped Beer Styles SectionList */}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={renderStyleItem}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeaderTitle}>{title}</Text>
+            </View>
+          )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyIcon}>🍺🚫</ThemedText>
-              <ThemedText type="default" style={styles.emptyTitle}>Ningún estilo coincide</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyBody}>
-                Prueba buscando otros términos o elimina los filtros técnicos seleccionados.
-              </ThemedText>
+              <Text style={styles.emptyIcon}>🍺🚫</Text>
+              <Text style={styles.emptyTitle}>Ningún estilo coincide</Text>
+              <Text style={styles.emptyBody}>
+                Ajusta las barras de volumen o borra la búsqueda para encontrar estilos.
+              </Text>
             </View>
           }
         />
@@ -352,7 +423,7 @@ export default function ExploreScreen() {
         onRequestClose={() => setDetailModalVisible(false)}
       >
         {selectedStyle && (
-          <ThemedView style={styles.modalContainer}>
+          <View style={styles.modalContainer}>
             <SafeAreaView style={styles.modalSafeArea} edges={['top', 'bottom']}>
               
               {/* Modal Header */}
@@ -361,13 +432,13 @@ export default function ExploreScreen() {
                   onPress={() => setDetailModalVisible(false)}
                   style={styles.modalCloseBtn}
                 >
-                  <ThemedText type="default" style={{ color: theme.tint, fontSize: 16 }}>
+                  <Text style={styles.modalBackText}>
                     ← Volver
-                  </ThemedText>
+                  </Text>
                 </Pressable>
-                <ThemedText type="smallBold" style={styles.modalSubHeader}>
-                  DETALLES DE ESTILO
-                </ThemedText>
+                <Text style={styles.modalSubHeader}>
+                  {t('styleDetailsTitle')}
+                </Text>
                 <View style={{ width: 60 }} />
               </View>
 
@@ -380,22 +451,22 @@ export default function ExploreScreen() {
                 {/* Visual Title Header */}
                 <View style={styles.styleTitleBlock}>
                   <View style={styles.styleMainRow}>
-                    <View style={[styles.styleBadgeBig, { backgroundColor: theme.tint }]}>
-                      <ThemedText style={styles.styleBadgeBigText}>{selectedStyle.id}</ThemedText>
+                    <View style={styles.styleBadgeBig}>
+                      <Text style={styles.styleBadgeBigText}>{selectedStyle.id}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <ThemedText type="subtitle" style={styles.styleMainName}>
+                      <Text style={styles.styleMainName}>
                         {selectedStyle.name}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
+                      </Text>
+                      <Text style={styles.styleMainCategory}>
                         Categoría: {selectedStyle.category}
-                      </ThemedText>
+                      </Text>
                     </View>
                   </View>
 
                   {/* Beer Visual Color Bar */}
                   <View style={styles.srmVisualBarWrapper}>
-                    <ThemedText type="code" style={styles.srmBarLabel}>COLOR VISUAL ESTIMADO (SRM)</ThemedText>
+                    <Text style={styles.srmBarLabel}>{t('srmColorVisual')}</Text>
                     <View style={styles.srmVisualBarTrack}>
                       {Array.from({ length: 40 }, (_, idx) => {
                         const srmVal = idx + 1;
@@ -414,114 +485,114 @@ export default function ExploreScreen() {
                       })}
                     </View>
                     <View style={styles.srmLegendRow}>
-                      <ThemedText type="code" style={styles.srmLegendText}>SRM Mín: {selectedStyle.srmMin}</ThemedText>
-                      <ThemedText type="code" style={styles.srmLegendText}>SRM Máx: {selectedStyle.srmMax}</ThemedText>
+                      <Text style={styles.srmLegendText}>SRM Mín: {selectedStyle.srmMin}</Text>
+                      <Text style={styles.srmLegendText}>SRM Máx: {selectedStyle.srmMax}</Text>
                     </View>
                   </View>
                 </View>
 
-                {/* Vital Statistics Table */}
-                <ThemedView type="backgroundElement" style={styles.vitalTable}>
-                  <ThemedText type="smallBold" style={styles.vitalTableHeader}>Estadísticas Vitales</ThemedText>
+                {/* Vital Statistics Table Card */}
+                <View style={styles.vitalCard}>
+                  <Text style={styles.vitalTableHeader}>{t('vitalStats')}</Text>
                   
                   <View style={styles.vitalRow}>
-                    <ThemedText type="small" themeColor="textSecondary">Densidad Inicial (OG)</ThemedText>
-                    <ThemedText type="code" style={styles.vitalValue}>{selectedStyle.vitalStatistics.og}</ThemedText>
+                    <Text style={styles.vitalFieldLabel}>{t('og')}</Text>
+                    <Text style={styles.vitalFieldValue}>{selectedStyle.vitalStatistics.og}</Text>
                   </View>
                   <View style={styles.vitalDivider} />
                   
                   <View style={styles.vitalRow}>
-                    <ThemedText type="small" themeColor="textSecondary">Densidad Final (FG)</ThemedText>
-                    <ThemedText type="code" style={styles.vitalValue}>{selectedStyle.vitalStatistics.fg}</ThemedText>
+                    <Text style={styles.vitalFieldLabel}>{t('fg')}</Text>
+                    <Text style={styles.vitalFieldValue}>{selectedStyle.vitalStatistics.fg}</Text>
                   </View>
                   <View style={styles.vitalDivider} />
 
                   <View style={styles.vitalRow}>
-                    <ThemedText type="small" themeColor="textSecondary">Alcohol en Volumen (ABV)</ThemedText>
-                    <ThemedText type="code" style={[styles.vitalValue, { color: theme.tint, fontWeight: '700' }]}>
+                    <Text style={styles.vitalFieldLabel}>{t('abv')}</Text>
+                    <Text style={[styles.vitalFieldValue, { color: '#D99B26', fontWeight: '800' }]}>
                       {selectedStyle.vitalStatistics.abv}
-                    </ThemedText>
+                    </Text>
                   </View>
                   <View style={styles.vitalDivider} />
 
                   <View style={styles.vitalRow}>
-                    <ThemedText type="small" themeColor="textSecondary">Amargor (IBU)</ThemedText>
-                    <ThemedText type="code" style={[styles.vitalValue, { color: theme.accent, fontWeight: '700' }]}>
+                    <Text style={styles.vitalFieldLabel}>{t('ibu')}</Text>
+                    <Text style={[styles.vitalFieldValue, { color: '#2F5D73', fontWeight: '800' }]}>
                       {selectedStyle.vitalStatistics.ibu}
-                    </ThemedText>
+                    </Text>
                   </View>
                   <View style={styles.vitalDivider} />
 
                   <View style={styles.vitalRow}>
-                    <ThemedText type="small" themeColor="textSecondary">Color de Cerveza (SRM)</ThemedText>
-                    <ThemedText type="code" style={styles.vitalValue}>{selectedStyle.vitalStatistics.srm}</ThemedText>
+                    <Text style={styles.vitalFieldLabel}>{t('srm')}</Text>
+                    <Text style={styles.vitalFieldValue}>{selectedStyle.vitalStatistics.srm}</Text>
                   </View>
-                </ThemedView>
+                </View>
 
-                {/* Descriptive Sections */}
+                {/* Descriptive Cards Stack */}
                 <View style={styles.detailsGroup}>
                   
                   {/* Overall Impression */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>1. Impresión General</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.overallImpression}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('impression')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.overallImpression}</Text>
                   </View>
 
                   {/* Aroma */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>2. Aroma</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.aroma}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('aroma')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.aroma}</Text>
                   </View>
 
                   {/* Appearance */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>3. Apariencia</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.appearance}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('appearance')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.appearance}</Text>
                   </View>
 
                   {/* Flavor */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>4. Sabor</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.flavor}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('flavor')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.flavor}</Text>
                   </View>
 
                   {/* Mouthfeel */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>5. Sensación en Boca</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.mouthfeel}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('mouthfeel')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.mouthfeel}</Text>
                   </View>
 
                   {/* History */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>6. Historia</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.history}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('history')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.history}</Text>
                   </View>
 
                   {/* Ingredients */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>7. Ingredientes Característicos</ThemedText>
-                    <ThemedText type="default" style={styles.detailText}>{selectedStyle.ingredients}</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('ingredients')}</Text>
+                    <Text style={styles.detailText}>{selectedStyle.ingredients}</Text>
                   </View>
 
                   {/* Commercial Examples */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>8. Ejemplos Comerciales</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('examples')}</Text>
                     <View style={styles.examplesList}>
                       {selectedStyle.commercialExamples.map((ex, i) => (
-                        <ThemedView key={i} type="backgroundElement" style={styles.exampleItem}>
-                          <ThemedText type="default" style={styles.exampleText}>🍺 {ex}</ThemedText>
-                        </ThemedView>
+                        <View key={i} style={styles.exampleItem}>
+                          <Text style={styles.exampleText}>🍺 {ex}</Text>
+                        </View>
                       ))}
                     </View>
                   </View>
 
                   {/* Tags */}
-                  <View style={styles.detailSection}>
-                    <ThemedText type="smallBold" style={styles.detailHeading}>Etiquetas</ThemedText>
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailHeading}>{t('tags')}</Text>
                     <View style={styles.tagsContainer}>
                       {selectedStyle.tags.map((tag, i) => (
-                        <View key={i} style={[styles.tagBadge, { backgroundColor: theme.backgroundSelected }]}>
-                          <ThemedText type="code" style={{ fontSize: 11 }}>#{tag}</ThemedText>
+                        <View key={i} style={styles.tagBadge}>
+                          <Text style={styles.tagBadgeText}>#{tag}</Text>
                         </View>
                       ))}
                     </View>
@@ -531,7 +602,7 @@ export default function ExploreScreen() {
 
               </ScrollView>
             </SafeAreaView>
-          </ThemedView>
+          </View>
         )}
       </Modal>
 
@@ -544,6 +615,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     flexDirection: 'row',
+    backgroundColor: '#2F5D73', // Premium brand Petroleum Blue background
   },
   safeArea: {
     flex: 1,
@@ -553,116 +625,183 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.two,
-    gap: Spacing.two,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.two,
+    height: 48,
   },
   backButton: {
     paddingVertical: Spacing.one,
-    paddingRight: Spacing.three,
+    paddingRight: Spacing.four,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 24,
+    color: '#FFFFFF',
     fontWeight: '700',
-    fontFamily: Fonts.manropeBold,
+    fontFamily: Fonts.spaceGroteskBold,
   },
   pressed: {
     opacity: 0.7,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontFamily: Fonts.spaceGroteskBold,
+    flex: 1,
+    textAlign: 'center',
   },
-  searchBox: {
+  searchToggleButton: {
+    paddingVertical: Spacing.one,
+    paddingLeft: Spacing.four,
+  },
+  searchToggleIcon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  headerSearchActive: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Spacing.three,
+    borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    height: 48,
+    borderWidth: 1.5,
   },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: Spacing.two,
+  searchCloseBtn: {
+    paddingRight: Spacing.three,
   },
-  searchInput: {
+  searchBackArrow: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  searchInputActive: {
     flex: 1,
     fontSize: 15,
     padding: 0,
-    fontWeight: '500',
+    fontWeight: '600',
+    fontFamily: Fonts.spaceGrotesk,
+    ...({ outlineStyle: 'none' } as any),
   },
-  clearSearchBtn: {
-    padding: Spacing.one,
+  searchInlineClearBtn: {
+    paddingLeft: Spacing.three,
   },
-  filterSection: {
-    gap: Spacing.two,
-    marginBottom: Spacing.two,
+  searchInlineClearText: {
+    fontWeight: '800',
+    fontSize: 16,
   },
-  categoriesScroll: {
+  volumeFiltersPanel: {
     paddingHorizontal: Spacing.four,
-    gap: Spacing.two,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.two,
+    marginBottom: Spacing.one,
   },
-  categoryPill: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.five,
-  },
-  categoryPillText: {
-    fontSize: 13,
-  },
-  quickFiltersContainer: {
+  volumeEqualizersRow: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  filterColumn: {
+  volumeColumn: {
     flex: 1,
-    gap: Spacing.half,
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  volumeDividerColumn: {
+    width: 1,
+    height: '80%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: Spacing.two,
   },
   filterGroupLabel: {
     fontSize: 9,
-    letterSpacing: 0.5,
-    fontWeight: '700',
+    letterSpacing: 2,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.75)', // Elegant high tracking subtitles
+    textTransform: 'uppercase',
+    fontFamily: Fonts.spaceGroteskBold,
+    textAlign: 'center',
   },
-  filterSelector: {
+  volumeEqualizerTrack: {
     flexDirection: 'row',
-    borderRadius: Spacing.two,
-    padding: Spacing.half,
-  },
-  filterOption: {
-    flex: 1,
-    paddingVertical: Spacing.half,
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'center',
-    borderRadius: Spacing.one,
+    gap: Spacing.two,
+    height: 36,
+    marginVertical: 4,
   },
-  filterOptionText: {
+  volumeBarTouch: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 24,
+    height: 48,
+  },
+  volumeEqualizerBar: {
+    width: 6,
+    borderRadius: 3,
+    marginBottom: 4,
+  },
+  volumeLevelShortLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  volumeDescText: {
     fontSize: 10,
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '700',
+    fontFamily: Fonts.manropeBold,
   },
   resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.one,
+    marginBottom: 2,
+  },
+  resultsCounterText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clearFiltersText: {
+    color: '#D99B26',
+    fontSize: 12,
+    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: Spacing.four,
     paddingBottom: BottomTabInset + Spacing.six,
-    gap: Spacing.three,
+  },
+  sectionHeaderContainer: {
+    backgroundColor: '#2F5D73', // Sticky category header matches screen petroleum blue
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.two,
+  },
+  sectionHeaderTitle: {
+    fontSize: 13,
+    color: '#D99B26', // Vibrant brand amber category headings
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontFamily: Fonts.spaceGroteskBold,
   },
   styleCard: {
+    backgroundColor: '#FFFFFF', // Solid premium white cards
     borderRadius: Spacing.three,
     padding: Spacing.three,
-    elevation: 2,
+    marginVertical: Spacing.one, // Beautiful spacing between list items
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
   cardPressed: {
     opacity: 0.9,
@@ -671,13 +810,105 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.one,
   },
-  srmIndicator: {
-    width: 6,
-    height: 36,
-    borderRadius: Spacing.half,
+  beerGlassContainer: {
+    width: 46,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     marginRight: Spacing.three,
+    position: 'relative',
+  },
+  beerGlassHandle: {
+    position: 'absolute',
+    left: 2,
+    top: 18,
+    width: 9,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#CFCFCF', // Dynamic glass handle instantly makes it a beer mug!
+    zIndex: 1,
+  },
+  beerGlassFoam: {
+    width: 30, // Fits perfectly on top of the 26px mug base
+    height: 12,
+    backgroundColor: '#FFFDF4', // Creamy foam head base
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 1,
+    borderBottomRightRadius: 1,
+    borderWidth: 1.5,
+    borderColor: '#DFDFDF',
+    zIndex: 3,
+    position: 'relative',
+    bottom: -1.5, // Overlaps glass rim
+  },
+  beerGlassFoamBubble: {
+    position: 'absolute',
+    top: -5,
+    left: 14,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#FFFDF4', // Fluffy bubble top for triple-rounded cloud effect
+    borderWidth: 1.5,
+    borderColor: '#DFDFDF',
+    borderBottomWidth: 0,
+    zIndex: 4,
+  },
+  beerGlassLiquid: {
+    width: 26, // Sleek, taller aspect ratio (26x34) to avoid "jar" look
+    height: 34,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+    borderTopLeftRadius: 1.5,
+    borderTopRightRadius: 1.5,
+    borderWidth: 1.5,
+    borderColor: '#CFCFCF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  beerGlassHighlight: {
+    position: 'absolute',
+    left: 2.5,
+    top: 2.5,
+    width: 2.5,
+    height: '60%',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // Glistening glass reflection glare
+    borderRadius: 1,
+    zIndex: 4,
+  },
+  beerGlassBubble1: {
+    position: 'absolute',
+    bottom: 3,
+    right: 4,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // Rising carbonation micro-bubble
+    zIndex: 4,
+  },
+  beerGlassBubble2: {
+    position: 'absolute',
+    bottom: 9,
+    right: 8,
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)', // Rising carbonation micro-bubble
+    zIndex: 4,
+  },
+  beerGlassText: {
+    fontSize: 8.5, // Compact, ultra-clean typography inside the mug
+    fontWeight: '900',
+    fontFamily: Fonts.spaceGroteskBold,
+    textAlign: 'center',
+    zIndex: 5,
   },
   cardInfo: {
     flex: 1,
@@ -687,34 +918,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  styleId: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
   styleName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+    color: '#0A0C10',
     flex: 1,
-  },
-  styleCategory: {
-    fontSize: 11,
-    marginTop: 2,
   },
   cardSummary: {
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: Spacing.two,
+    color: '#0A0C10',
+    marginVertical: Spacing.two,
   },
   vitalStatsRow: {
     flexDirection: 'row',
     gap: Spacing.three,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.08)',
+    borderTopColor: 'rgba(0,0,0,0.05)',
     paddingTop: Spacing.two,
+    marginTop: 2,
   },
   vitalStatLabel: {
-    fontSize: 10,
-    color: 'rgba(128,128,128,0.7)',
+    fontSize: 11,
+    color: 'rgba(10, 12, 16, 0.5)',
+    fontWeight: '600',
+  },
+  vitalStatValue: {
+    color: '#0A0C10',
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -726,16 +957,19 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   emptyBody: {
     fontSize: 13,
     textAlign: 'center',
     paddingHorizontal: Spacing.five,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 
   // Modal Styles
   modalContainer: {
     flex: 1,
+    backgroundColor: '#2F5D73', // Cohesive Petroleum Blue modal background
   },
   modalSafeArea: {
     flex: 1,
@@ -745,16 +979,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.1)',
+    paddingVertical: Spacing.three,
   },
   modalCloseBtn: {
     paddingVertical: Spacing.one,
   },
+  modalBackText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Fonts.spaceGrotesk,
+  },
   modalSubHeader: {
     fontSize: 11,
-    letterSpacing: 1.5,
+    color: 'rgba(255, 255, 255, 0.75)',
+    letterSpacing: 2.5,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   modalScrollContent: {
     paddingHorizontal: Spacing.four,
@@ -764,6 +1005,7 @@ const styles = StyleSheet.create({
   },
   styleTitleBlock: {
     gap: Spacing.three,
+    marginBottom: Spacing.two,
   },
   styleMainRow: {
     flexDirection: 'row',
@@ -776,24 +1018,33 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#D99B26', // Solid brand amber badge
   },
   styleBadgeBigText: {
-    color: '#100E0D',
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '900',
   },
   styleMainName: {
     fontSize: 22,
     fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  styleMainCategory: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
   srmVisualBarWrapper: {
     gap: Spacing.one,
     marginTop: Spacing.one,
   },
   srmBarLabel: {
-    fontSize: 9,
-    letterSpacing: 0.5,
-    color: 'rgba(128,128,128,0.7)',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   srmVisualBarTrack: {
     flexDirection: 'row',
@@ -808,47 +1059,73 @@ const styles = StyleSheet.create({
   srmLegendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
   srmLegendText: {
-    fontSize: 10,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
   },
-  vitalTable: {
+  vitalCard: {
+    backgroundColor: '#FFFFFF', // Premium white card
     borderRadius: Spacing.three,
     padding: Spacing.four,
     gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
   vitalTableHeader: {
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#2F5D73',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     marginBottom: Spacing.one,
   },
   vitalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 2,
   },
-  vitalValue: {
+  vitalFieldLabel: {
     fontSize: 13,
+    color: 'rgba(10, 12, 16, 0.6)',
+    fontWeight: '600',
+  },
+  vitalFieldValue: {
+    fontSize: 14,
+    color: '#0A0C10',
+    fontWeight: '700',
   },
   vitalDivider: {
     height: 1,
-    backgroundColor: 'rgba(128,128,128,0.08)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   detailsGroup: {
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
-  detailSection: {
-    gap: Spacing.one,
+  detailCard: {
+    backgroundColor: '#FFFFFF', // Premium white card
+    borderRadius: Spacing.three,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
   detailHeading: {
     fontSize: 13,
-    letterSpacing: 0.5,
-    fontWeight: '700',
+    letterSpacing: 1,
+    fontWeight: '800',
+    color: '#2F5D73', // Vibrant brand petroleum blue
     textTransform: 'uppercase',
+    marginBottom: 2,
   },
   detailText: {
     fontSize: 14,
     lineHeight: 22,
     fontWeight: '500',
+    color: '#0A0C10',
   },
   examplesList: {
     flexDirection: 'row',
@@ -860,10 +1137,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
+    backgroundColor: '#F5F6F8', // Soft neutral grey pill
   },
   exampleText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#0A0C10',
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -872,8 +1151,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.half,
   },
   tagBadge: {
-    paddingVertical: Spacing.half,
-    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
     borderRadius: Spacing.one,
+    backgroundColor: 'rgba(47, 93, 115, 0.1)', // Subtle petroleum blue badge tint
+  },
+  tagBadgeText: {
+    fontSize: 12,
+    color: '#2F5D73',
+    fontWeight: '700',
   },
 });
