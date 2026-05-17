@@ -1,0 +1,45 @@
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import React from 'react';
+import { useColorScheme } from 'react-native';
+import { useFonts } from 'expo-font';
+import { SpaceGrotesk_400Regular, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
+import { Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Manrope_400Regular, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
+import { Sora_400Regular, Sora_700Bold } from '@expo-google-fonts/sora';
+import { IBMPlexSans_400Regular, IBMPlexSans_600SemiBold } from '@expo-google-fonts/ibm-plex-sans';
+
+import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { LanguageProvider } from '@/context/language-context';
+import { Stack } from 'expo-router';
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  
+  const [loaded, error] = useFonts({
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Sora_400Regular,
+    Sora_700Bold,
+    IBMPlexSans_400Regular,
+    IBMPlexSans_600SemiBold,
+  });
+
+  if (!loaded && !error) {
+    return null;
+  }
+
+  return (
+    <LanguageProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <AnimatedSplashOverlay />
+        <Stack screenOptions={{ headerShown: false }} />
+      </ThemeProvider>
+    </LanguageProvider>
+  );
+}
