@@ -25,7 +25,7 @@ import {
   getBJCPStyles 
 } from '@/data/bjcp2021';
 import { fuzzyMatch } from '@/utils/fuzzy';
-import { GLOSSARY_DATA, GlossaryTerm } from '@/data/glossary';
+import { GLOSSARY_DATA, GlossaryTerm, TAG_DEFINITIONS_DATA, TagDefinition } from '@/data/glossary';
 
 // SRM Color Mapping Helper for Visual SRM bars
 function getSRMColor(srm: number): string {
@@ -175,6 +175,19 @@ export default function ExploreScreen() {
 
   const handleGlossaryLinkPress = (term: GlossaryTerm) => {
     setSelectedGlossaryTerm(term);
+    setGlossaryModalVisible(true);
+  };
+
+  const handleTagLinkPress = (tagDef: TagDefinition) => {
+    setSelectedGlossaryTerm({
+      id: tagDef.tag,
+      name_es: tagDef.name_es,
+      name_en: tagDef.name_en,
+      definition_es: tagDef.description_es,
+      definition_en: tagDef.description_en,
+      patterns_es: [],
+      patterns_en: []
+    });
     setGlossaryModalVisible(true);
   };
 
@@ -859,11 +872,39 @@ export default function ExploreScreen() {
                       </Text>
                     </View>
                     <View style={styles.tagsContainer}>
-                      {selectedStyle.tags.map((tag, i) => (
-                        <View key={i} style={styles.tagBadge}>
-                          <Text style={styles.tagBadgeText}>#{tag}</Text>
-                        </View>
-                      ))}
+                      {selectedStyle.tags.map((tag, i) => {
+                        const tagDef = TAG_DEFINITIONS_DATA.find(
+                          tData => tData.tag === tag || 
+                          tData.tag.toLowerCase() === tag.toLowerCase()
+                        );
+
+                        return (
+                          <Pressable 
+                            key={i} 
+                            style={({ pressed }) => [
+                              styles.tagBadge,
+                              { 
+                                opacity: pressed ? 0.7 : 1,
+                                backgroundColor: tagDef ? 'rgba(217, 155, 38, 0.15)' : 'rgba(47, 93, 115, 0.1)',
+                                borderColor: tagDef ? '#D99B26' : 'transparent',
+                                borderWidth: tagDef ? 1 : 0
+                              }
+                            ]}
+                            onPress={() => {
+                              if (tagDef) {
+                                handleTagLinkPress(tagDef);
+                              }
+                            }}
+                          >
+                            <Text style={[
+                              styles.tagBadgeText,
+                              tagDef && { color: '#D99B26', fontWeight: '900' }
+                            ]}>
+                              #{tag}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
 

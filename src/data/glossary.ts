@@ -299,5 +299,54 @@ export const TAG_DEFINITIONS_DATA: TagDefinition[] = [
     name_en: "Bottom-fermented (Lager)",
     description_es: "Cervezas elaboradas con levaduras Saccharomyces pastorianus que fermentan a temperaturas frías (7-13°C) en el fondo del tanque, logrando perfiles limpios y sin ésteres.",
     description_en: "Beers brewed with Saccharomyces pastorianus yeast that ferments at cold temperatures (7-13°C/45-55°F) at the bottom of the tank, yielding clean profiles free of esters."
+  },
+  {
+    tag: "islas-británicas",
+    name_es: "Islas Británicas (islas-británicas)",
+    name_en: "British Isles (british-isles)",
+    description_es: "Región de origen oficial en el BJCP que abarca Inglaterra, Gales, Escocia e Irlanda, hogar de estilos históricos y clásicos como Bitters, Stouts, Porters y Scottish Ales.",
+    description_en: "Official BJCP origin region covering England, Wales, Scotland, and Ireland, home to historic and classic styles like Bitters, Stouts, Porters, and Scottish Ales."
+  },
+  {
+    tag: "europa-occidental",
+    name_es: "Europa Occidental (europa-occidental)",
+    name_en: "Western Europe (western-europe)",
+    description_es: "Región de origen oficial en el BJCP que incluye a Bélgica, Francia y Países Bajos, cuna de cervezas complejas, rústicas, frutales y especiadas de estilo belga (como Saisons y Trapenses).",
+    description_en: "Official BJCP origin region including Belgium, France, and the Netherlands, birthplace of complex, rustic, fruity, and spicy Belgian-style beers (like Saisons and Trappists)."
+  },
+  {
+    tag: "europa-central",
+    name_es: "Europa Central (europa-central)",
+    name_en: "Central Europe (central-europe)",
+    description_es: "Región de origen oficial en el BJCP que comprende Alemania, Austria, República Checa y Escandinavia, famosa por sus lagers de precisión, cervezas de trigo tradicionales y Bocks.",
+    description_en: "Official BJCP origin region comprising Germany, Austria, the Czech Republic, and Scandinavia, famous for its precision lagers, traditional wheat beers, and Bocks."
+  },
+  {
+    tag: "europa-oriental",
+    name_es: "Europa Oriental (europa-oriental)",
+    name_en: "Eastern Europe (eastern-europe)",
+    description_es: "Región de origen oficial en el BJCP que abarca Polonia, Estados Bálticos y Rusia, conocida por cervezas oscuras y robustas como la Baltic Porter o cervezas históricas ahumadas.",
+    description_en: "Official BJCP origin region covering Poland, the Baltic States, and Russia, known for dark and robust beers like Baltic Porter or historical smoked beers."
+  },
+  {
+    tag: "norte-américa",
+    name_es: "Norteamérica (norte-américa)",
+    name_en: "North America (north-america)",
+    description_es: "Región de origen oficial en el BJCP que incluye a Estados Unidos, Canadá y México, impulsora de la revolución artesanal moderna y el uso intenso de lúpulos cítricos y resinosos.",
+    description_en: "Official BJCP origin region including the United States, Canada, and Mexico, driving the modern craft revolution and the intense use of citrusy and resinous hops."
+  },
+  {
+    tag: "sud-américa",
+    name_es: "Sudamérica (sud-américa)",
+    name_en: "South America (south-america)",
+    description_es: "Región de origen oficial en el BJCP que abarca Argentina y Brasil, caracterizada por la adaptación creativa de estilos tradicionales usando ingredientes y frutas locales (ej: Catharina Sour).",
+    description_en: "Official BJCP origin region covering Argentina and Brazil, characterized by the creative adaptation of traditional styles using local ingredients and fruits (e.g. Catharina Sour)."
+  },
+  {
+    tag: "pacífico",
+    name_es: "Pacífico (pacífico)",
+    name_en: "Pacific (pacific)",
+    description_es: "Región de origen oficial en el BJCP que comprende Australia y Nueva Zelanda, famosa por el uso de variedades exclusivas de lúpulos con perfiles intensamente frutales y tropicales.",
+    description_en: "Official BJCP origin region comprising Australia and New Zealand, famous for the use of exclusive hop varieties with intensely fruity and tropical profiles."
   }
 ];
