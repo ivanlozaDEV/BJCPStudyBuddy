@@ -19,6 +19,21 @@ export const translations = {
     offFlavorsDesc: 'Aprende a identificar, describir y prevenir los defectos en la cerveza.',
     settingsDesc: 'Configura el idioma, respuestas hápticas y recursos oficiales del BJCP.',
     
+    // Style Comparator
+    selectStyleA: 'Seleccionar Estilo A',
+    selectStyleB: 'Seleccionar Estilo B',
+    vs: 'VS',
+    noStylesSelected: 'Elige dos estilos para comparar sus estadísticas y perfiles de sabor frente a frente.',
+    differentStats: 'Comparación Técnica de Parámetros',
+    
+    // Off-Flavors Screen
+    offFlavorTitle: 'Guía de Defectos (Off-Flavors)',
+    searchOffFlavors: 'Buscar por defecto, descriptor o origen...',
+    sensoryDescription: 'Descripción Sensorial',
+    originCauses: 'Origen y Causas',
+    prevention: 'Medidas de Prevención',
+    threshold: 'Umbral de Detección',
+    
     // Explore / Search Screen
     searchPlaceholder: 'Buscar por estilo, ID, descriptor...',
     foundStyles: 'estilos encontrados',
@@ -109,6 +124,21 @@ export const translations = {
     offFlavors: 'Off-Flavors Guide',
     offFlavorsDesc: 'Learn to identify, describe, and prevent beer defects.',
     settingsDesc: 'Configure language, haptic feedback, and official BJCP resources.',
+    
+    // Style Comparator
+    selectStyleA: 'Select Style A',
+    selectStyleB: 'Select Style B',
+    vs: 'VS',
+    noStylesSelected: 'Choose two styles to compare their vital stats and flavor profiles side-by-side.',
+    differentStats: 'Technical Parameter Comparison',
+    
+    // Off-Flavors Screen
+    offFlavorTitle: 'Off-Flavors Guide',
+    searchOffFlavors: 'Search by defect, descriptor, or cause...',
+    sensoryDescription: 'Sensory Description',
+    originCauses: 'Origin and Causes',
+    prevention: 'Prevention Measures',
+    threshold: 'Detection Threshold',
     
     // Explore / Search Screen
     searchPlaceholder: 'Search by style, ID, descriptor...',

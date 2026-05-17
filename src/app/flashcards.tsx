@@ -6,7 +6,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { BeerStyle, BJCP_2021_DATA } from '@/data/bjcp2021';
+import { useTranslation } from '@/context/language-context';
+import { BeerStyle, getBJCPStyles } from '@/data/bjcp2021';
 
 // SRM Color Mapping Helper for Visual SRM scale on flashcards
 function getSRMColor(srm: number): string {
@@ -22,6 +23,7 @@ function getSRMColor(srm: number): string {
 
 export default function FlashcardsScreen() {
   const theme = useTheme();
+  const { language } = useTranslation();
 
   // Game State
   const [currentStyle, setCurrentStyle] = useState<BeerStyle | null>(null);
@@ -32,8 +34,9 @@ export default function FlashcardsScreen() {
 
   // Initialize new study session
   const startNewSession = () => {
-    // Shuffle the styles array
-    const shuffled = [...BJCP_2021_DATA].sort(() => Math.random() - 0.5);
+    // Fetch the dynamically translated styles based on the active language
+    const stylesList = getBJCPStyles(language);
+    const shuffled = [...stylesList].sort(() => Math.random() - 0.5);
     setSessionStyles(shuffled);
     setCurrentStyle(shuffled[0]);
     setIsFlipped(false);
@@ -43,7 +46,7 @@ export default function FlashcardsScreen() {
 
   useEffect(() => {
     startNewSession();
-  }, []);
+  }, [language]);
 
   const handleFlipCard = () => {
     setIsFlipped(!isFlipped);
@@ -115,13 +118,13 @@ export default function FlashcardsScreen() {
                 styles.progressBarFill, 
                 { 
                   backgroundColor: theme.tint,
-                  width: `${(answeredStyles.length / BJCP_2021_DATA.length) * 100}%` 
+                  width: `${(answeredStyles.length / (sessionStyles.length || 1)) * 100}%` 
                 }
               ]} 
             />
           </View>
           <ThemedText type="code" style={styles.progressText}>
-            Ficha {answeredStyles.length + 1} de {BJCP_2021_DATA.length}
+            Ficha {answeredStyles.length + 1} de {sessionStyles.length || 1}
           </ThemedText>
         </View>
 

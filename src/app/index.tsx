@@ -29,14 +29,14 @@ export default function HomeScreen() {
       title: t('styleComparator'),
       description: t('styleComparatorDesc'),
       icon: '⚖️',
-      route: '/explore' as const, // Placeholder until comparator is built
+      route: '/comparator' as const,
     },
     {
       id: 'offflavors',
       title: t('offFlavors'),
       description: t('offFlavorsDesc'),
       icon: '🔬',
-      route: '/settings' as const, // Placeholder until off-flavors screen is built
+      route: '/offflavors' as const,
     },
     {
       id: 'flashcards',

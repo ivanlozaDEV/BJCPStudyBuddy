@@ -7,7 +7,8 @@ import {
   View, 
   Modal, 
   ScrollView, 
-  useColorScheme 
+  useColorScheme,
+  Text
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -19,7 +20,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { 
   BeerStyle, 
-  BJCP_2021_DATA, 
+  getBJCPStyles, 
   searchBeerStyles, 
   getAllCategories 
 } from '@/data/bjcp2021';
@@ -41,7 +42,7 @@ export default function ExploreScreen() {
   const theme = useTheme();
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,7 +65,7 @@ export default function ExploreScreen() {
   }, [params.search]);
 
   // Categories list
-  const categories = getAllCategories();
+  const categories = getAllCategories(language);
 
   // Handlers
   const handleClearFilters = () => {
@@ -75,7 +76,7 @@ export default function ExploreScreen() {
   };
 
   // Filter Logic
-  const filteredStyles = BJCP_2021_DATA.filter(style => {
+  const filteredStyles = getBJCPStyles(language).filter(style => {
     // 1. Text Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -149,13 +150,13 @@ export default function ExploreScreen() {
         {/* Vital stats small badges */}
         <View style={styles.vitalStatsRow}>
           <ThemedText type="code" style={styles.vitalStatLabel}>
-            ABV: <ThemedText type="code" style={{ color: theme.text }}>{item.vitalStatistics.abv}</ThemedText>
+            ABV: <Text style={{ color: theme.text }}>{item.vitalStatistics.abv}</Text>
           </ThemedText>
           <ThemedText type="code" style={styles.vitalStatLabel}>
-            IBU: <ThemedText type="code" style={{ color: theme.text }}>{item.vitalStatistics.ibu}</ThemedText>
+            IBU: <Text style={{ color: theme.text }}>{item.vitalStatistics.ibu}</Text>
           </ThemedText>
           <ThemedText type="code" style={styles.vitalStatLabel}>
-            SRM: <ThemedText type="code" style={{ color: theme.text }}>{item.vitalStatistics.srm}</ThemedText>
+            SRM: <Text style={{ color: theme.text }}>{item.vitalStatistics.srm}</Text>
           </ThemedText>
         </View>
       </Pressable>
@@ -367,7 +368,7 @@ export default function ExploreScreen() {
                 <ThemedText type="smallBold" style={styles.modalSubHeader}>
                   DETALLES DE ESTILO
                 </ThemedText>
-                <View style={{ width: 60 }} /> {/* Spacer */}
+                <View style={{ width: 60 }} />
               </View>
 
               {/* Scrollable Details */}
