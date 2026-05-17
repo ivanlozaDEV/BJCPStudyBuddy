@@ -10,7 +10,7 @@ import Svg, {
 } from 'react-native-svg';
 
 interface DetailIconProps extends SvgProps {
-  name: 'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history' | 'ingredients' | 'examples' | 'tags';
+  name: 'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history' | 'ingredients' | 'examples' | 'tags' | 'comments' | 'comparison';
 }
 
 export function DetailIcon({ name, ...props }: DetailIconProps) {
@@ -201,6 +201,38 @@ export function DetailIcon({ name, ...props }: DetailIconProps) {
           />
           {/* Thread punch hole */}
           <Circle cx={8} cy={8} r={1.2} fill="#78909C" />
+        </Svg>
+      );
+
+    case "comments":
+      return (
+        <Svg {...defaultProps}>
+          {/* Speech bubble outline */}
+          <Path 
+            d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" 
+            stroke="#7986CB" 
+            strokeWidth={1.8} 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          />
+          {/* Inner dots representing speech */}
+          <Circle cx={9} cy={10} r={1} fill="#5C6BC0" />
+          <Circle cx={13} cy={10} r={1} fill="#5C6BC0" />
+          <Circle cx={17} cy={10} r={1} fill="#5C6BC0" />
+        </Svg>
+      );
+
+    case "comparison":
+      return (
+        <Svg {...defaultProps}>
+          {/* Balance Scale outline */}
+          <Path 
+            d="M12 3v17M19 7l-7-2-7 2M5 7v4c0 2 1.5 3 3 3s3-1 3-3V7M13 7v4c0 2 1.5 3 3 3s3-1 3-3V7M4 21h16" 
+            stroke="#FFB74D" 
+            strokeWidth={1.8} 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          />
         </Svg>
       );
   }

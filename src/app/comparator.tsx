@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -40,9 +40,23 @@ export default function ComparatorScreen() {
   const { t, language } = useTranslation();
   const stylesList = getBJCPStyles(language);
 
+  const params = useLocalSearchParams<{ styleAId?: string; styleBId?: string }>();
+
   // Selected Beer Styles
   const [styleA, setStyleA] = useState<BeerStyle | null>(null);
   const [styleB, setStyleB] = useState<BeerStyle | null>(null);
+
+  // Sync route params to pre-load styles
+  useEffect(() => {
+    if (params.styleAId) {
+      const foundA = stylesList.find(s => s.id.toLowerCase() === params.styleAId?.toLowerCase());
+      if (foundA) setStyleA(foundA);
+    }
+    if (params.styleBId) {
+      const foundB = stylesList.find(s => s.id.toLowerCase() === params.styleBId?.toLowerCase());
+      if (foundB) setStyleB(foundB);
+    }
+  }, [params.styleAId, params.styleBId, stylesList]);
 
   // Selection Modal states
   const [modalVisible, setModalVisible] = useState(false);

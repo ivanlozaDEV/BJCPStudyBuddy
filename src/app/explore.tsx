@@ -8,7 +8,8 @@ import {
   Modal, 
   ScrollView, 
   useColorScheme,
-  Text
+  Text,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -75,6 +76,10 @@ export default function ExploreScreen() {
   const [selectedStyle, setSelectedStyle] = useState<BeerStyle | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
+  // Link Choice Modal State
+  const [linkChoiceModalVisible, setLinkChoiceModalVisible] = useState(false);
+  const [linkTargetStyle, setLinkTargetStyle] = useState<BeerStyle | null>(null);
+
   // Sync Search parameter from HomeScreen (Style of the Day)
   useEffect(() => {
     if (params.search) {
@@ -91,6 +96,76 @@ export default function ExploreScreen() {
     setIsSearching(false);
     setAbvFilter('all');
     setIbuFilter('all');
+  };
+
+  const handleStyleLinkPress = (targetStyle: BeerStyle, currentStyle: BeerStyle) => {
+    setLinkTargetStyle(targetStyle);
+    setLinkChoiceModalVisible(true);
+  };
+
+  const renderTextWithStyleLinks = (text: string, currentStyle: BeerStyle) => {
+    if (!text) return null;
+
+    const allStyles = getBJCPStyles(language);
+
+    // 1. Filter other styles and register terms (both names and code IDs)
+    const otherStyles = allStyles.filter(s => s.id !== currentStyle.id);
+    const terms: { text: string; style: BeerStyle }[] = [];
+    otherStyles.forEach(s => {
+      terms.push({ text: s.name, style: s });
+      terms.push({ text: s.id, style: s });
+    });
+
+    // Sort terms by length descending to prevent partial matching (e.g. "Fruit Beer" instead of "Specialty Fruit Beer")
+    terms.sort((a, b) => b.text.length - a.text.length);
+
+    // 2. Escape special regex characters
+    const escapeRegExp = (str: string) => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    const escapedTerms = terms.map(t => escapeRegExp(t.text));
+
+    // 3. Build alternation regex with word boundaries
+    const regexString = `\\b(${escapedTerms.join('|')})\\b`;
+    const styleNameRegex = new RegExp(regexString, 'gi');
+
+    const parts = text.split(styleNameRegex);
+
+    if (parts.length <= 1) {
+      return <Text style={styles.detailText}>{text}</Text>;
+    }
+
+    return (
+      <Text style={styles.detailText}>
+        {parts.map((part, index) => {
+          // Odd indices are matched terms (names or codes)
+          if (index % 2 !== 0) {
+            const termObj = terms.find(t => t.text.toLowerCase() === part.toLowerCase());
+
+            if (termObj) {
+              const targetStyle = termObj.style;
+              return (
+                <Text
+                  key={index}
+                  onPress={() => handleStyleLinkPress(targetStyle, currentStyle)}
+                  style={{
+                    color: '#D99B26', // Premium warm brand amber
+                    fontWeight: '700',
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  {part}
+                </Text>
+              );
+            }
+          }
+
+          // Even indices are regular text parts
+          return part;
+        })}
+      </Text>
+    );
   };
 
   // Extract sorting value for Category group ordering (e.g. "1A" -> 1.01, "21B" -> 21.02, "X1" -> 99.01)
@@ -625,6 +700,32 @@ export default function ExploreScreen() {
                     <Text style={styles.detailText}>{selectedStyle.mouthfeel}</Text>
                   </View>
 
+                  {/* Comments */}
+                  {selectedStyle.comments ? (
+                    <View style={styles.detailCard}>
+                      <View style={styles.detailHeaderRow}>
+                        <DetailIcon name="comments" style={styles.detailHeaderIcon} />
+                        <Text style={styles.detailHeading}>
+                          {t('comments').split('.')[1]?.trim() || t('comments')}
+                        </Text>
+                      </View>
+                      <Text style={styles.detailText}>{selectedStyle.comments}</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Comparison */}
+                  {selectedStyle.comparison ? (
+                    <View style={styles.detailCard}>
+                      <View style={styles.detailHeaderRow}>
+                        <DetailIcon name="comparison" style={styles.detailHeaderIcon} />
+                        <Text style={styles.detailHeading}>
+                          {t('comparison').split('.')[1]?.trim() || t('comparison')}
+                        </Text>
+                      </View>
+                      {renderTextWithStyleLinks(selectedStyle.comparison, selectedStyle)}
+                    </View>
+                  ) : null}
+
                   {/* History */}
                   <View style={styles.detailCard}>
                     <View style={styles.detailHeaderRow}>
@@ -687,6 +788,86 @@ export default function ExploreScreen() {
             </SafeAreaView>
           </View>
         )}
+      </Modal>
+
+      {/* Dynamic Link Choice Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={linkChoiceModalVisible}
+        onRequestClose={() => setLinkChoiceModalVisible(false)}
+      >
+        <View style={styles.choiceModalOverlay}>
+          <View style={[styles.choiceModalContainer, { backgroundColor: theme.backgroundElement }]}>
+            <Text style={[styles.choiceModalTitle, { color: theme.text }]}>
+              {language === 'es' ? 'Referencia Cruzada' : 'Cross Reference'}
+            </Text>
+            
+            <Text style={[styles.choiceModalSubtitle, { color: theme.textSecondary }]}>
+              {language === 'es' 
+                ? `¿Qué te gustaría hacer con el estilo ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`
+                : `What would you like to do with style ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`}
+            </Text>
+
+            <View style={styles.choiceButtonGroup}>
+              {/* Option 1: View Details */}
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.choiceButton, 
+                  { backgroundColor: '#D99B26', opacity: pressed ? 0.8 : 1 }
+                ]} 
+                onPress={() => {
+                  if (linkTargetStyle) {
+                    setSelectedStyle(linkTargetStyle);
+                  }
+                  setLinkChoiceModalVisible(false);
+                }}
+              >
+                <Text style={styles.choiceButtonText}>
+                  {language === 'es' ? 'Ver Detalles' : 'View Details'}
+                </Text>
+              </Pressable>
+
+              {/* Option 2: Compare */}
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.choiceButton, 
+                  { backgroundColor: '#2F5D73', marginTop: 10, opacity: pressed ? 0.8 : 1 }
+                ]} 
+                onPress={() => {
+                  if (linkTargetStyle && selectedStyle) {
+                    setLinkChoiceModalVisible(false);
+                    setDetailModalVisible(false);
+                    router.push({
+                      pathname: '/comparator',
+                      params: {
+                        styleAId: selectedStyle.id,
+                        styleBId: linkTargetStyle.id
+                      }
+                    });
+                  }
+                }}
+              >
+                <Text style={styles.choiceButtonText}>
+                  {language === 'es' ? 'Comparar con actual' : 'Compare with current'}
+                </Text>
+              </Pressable>
+
+              {/* Option 3: Cancel */}
+              <Pressable 
+                style={({ pressed }) => [
+                  styles.choiceCancelButton, 
+                  { marginTop: 15, opacity: pressed ? 0.7 : 1 }
+                ]} 
+                onPress={() => setLinkChoiceModalVisible(false)}
+              >
+                <Text style={[styles.choiceCancelButtonText, { color: theme.textSecondary }]}>
+                  {language === 'es' ? 'Cancelar' : 'Cancel'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
     </ThemedView>
@@ -1252,5 +1433,64 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#2F5D73',
     fontWeight: '700',
+  },
+  choiceModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  choiceModalContainer: {
+    width: '90%',
+    maxWidth: 340,
+    borderRadius: 16,
+    padding: Spacing.five,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  choiceModalTitle: {
+    fontFamily: Fonts.spaceGroteskBold,
+    fontWeight: '900',
+    fontSize: 18,
+    marginBottom: Spacing.two,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  choiceModalSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: Spacing.four,
+    fontWeight: '600',
+  },
+  choiceButtonGroup: {
+    width: '100%',
+  },
+  choiceButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  choiceCancelButton: {
+    width: '100%',
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceCancelButtonText: {
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

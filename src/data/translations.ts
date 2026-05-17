@@ -64,6 +64,8 @@ export const translations = {
     mouthfeel: '5. Sensación en Boca',
     history: '6. Historia',
     ingredients: '7. Ingredientes Característicos',
+    comments: 'Comentarios Adicionales',
+    comparison: 'Comparación de Estilos',
     examples: '8. Ejemplos Comerciales',
     tags: 'Etiquetas',
     
@@ -170,6 +172,8 @@ export const translations = {
     mouthfeel: '5. Mouthfeel',
     history: '6. History',
     ingredients: '7. Characteristic Ingredients',
+    comments: 'Additional Comments',
+    comparison: 'Style Comparison',
     examples: '8. Commercial Examples',
     tags: 'Tags',
     
