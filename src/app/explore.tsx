@@ -874,8 +874,9 @@ export default function ExploreScreen() {
                     <View style={styles.tagsContainer}>
                       {selectedStyle.tags.map((tag, i) => {
                         const tagDef = TAG_DEFINITIONS_DATA.find(
-                          tData => tData.tag === tag || 
-                          tData.tag.toLowerCase() === tag.toLowerCase()
+                          tData => 
+                            tData.tag.toLowerCase() === tag.toLowerCase() || 
+                            (tData.tag_es && tData.tag_es.toLowerCase() === tag.toLowerCase())
                         );
 
                         return (
