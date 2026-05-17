@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import React from 'react';
 import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SpaceGrotesk_400Regular, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import { Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -36,7 +37,8 @@ export default function TabLayout() {
 
   return (
     <LanguageProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={DefaultTheme}>
+        <StatusBar style="dark" />
         <AnimatedSplashOverlay />
         <Stack screenOptions={{ headerShown: false }} />
       </ThemeProvider>

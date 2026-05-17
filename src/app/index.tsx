@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Pressable, View } from 'react-native';
+import { ScrollView, StyleSheet, Pressable, View, Text } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -8,6 +9,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
+import { BeerBubbles } from '@/components/beer-bubbles';
+import { BeerLogo } from '@/components/beer-logo';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -42,40 +45,35 @@ export default function HomeScreen() {
       icon: '🃏',
       route: '/flashcards' as const,
     },
+    {
+      id: 'settings',
+      title: t('settings'),
+      description: t('settingsDesc'),
+      icon: '⚙️',
+      route: '/settings' as const,
+    },
   ];
 
   return (
     <ThemedView style={styles.container}>
+      <StatusBar style="light" />
+      {/* Dynamic rising beer carbonation bubbles in background */}
+      <BeerBubbles />
+
       <SafeAreaView style={styles.safeArea} edges={['top']}>
           <ScrollView 
             contentContainerStyle={styles.scrollContent} 
             showsVerticalScrollIndicator={false}
           >
-          {/* Header Area with Logo and Settings Button */}
-          <View style={styles.header}>
-            <View style={styles.logoAndTitle}>
-              <ThemedText style={styles.logoSymbol}>🧬</ThemedText>
-              <View>
-                <ThemedText type="title" style={styles.appName}>
-                  {t('appName')}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                  {t('selectOption')}
-                </ThemedText>
-              </View>
-            </View>
-
-            {/* Premium Settings Button */}
-            <Pressable 
-              onPress={() => router.push('/settings')}
-              style={({ pressed }) => [
-                styles.settingsBtn,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-                pressed && styles.pressed
-              ]}
-            >
-              <ThemedText style={{ fontSize: 18 }}>⚙️</ThemedText>
-            </Pressable>
+          {/* Magnificent Centered Hero Branding Area */}
+          <View style={styles.heroContainer}>
+            <BeerLogo size={105} />
+            <ThemedText style={styles.appName}>
+              Brew<Text style={styles.appNameLight}>Study</Text>
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              {t('selectOption')}
+            </ThemedText>
           </View>
 
           {/* Interactive Stack of 4 Menu Cards */}
@@ -127,6 +125,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     flexDirection: 'row',
+    backgroundColor: '#2F5D73', // Premium brand petroleum blue background
   },
   safeArea: {
     flex: 1,
@@ -140,43 +139,40 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.four,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  heroContainer: {
     alignItems: 'center',
-    marginBottom: Spacing.two,
-  },
-  logoAndTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.three,
-  },
-  logoSymbol: {
-    fontSize: 32,
+    marginBottom: Spacing.five,
+    marginTop: Spacing.three,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 28,
+    fontSize: 54, // Beautiful giant Hero title
+    fontWeight: '900',
+    color: '#FFFFFF',
+    fontFamily: Fonts.spaceGroteskBold,
+    letterSpacing: -1.2, // Tighter brand kerning
+    marginTop: Spacing.three,
+    textAlign: 'center',
+  },
+  appNameLight: {
+    fontFamily: Fonts.spaceGrotesk,
+    fontWeight: '400',
   },
   subtitle: {
-    fontSize: 13,
-    marginTop: 2,
-    letterSpacing: 0.5,
-  },
-  settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pressed: {
-    opacity: 0.8,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.75)', // Breathtaking high-contrast light white
+    letterSpacing: 2.5, // Sleeker letter spacing tracking
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginTop: Spacing.three, // Push down subtitle for breathing room
   },
   menuStack: {
     gap: Spacing.three,
+    width: '88%', // Compressed horizontally for a centered iOS card list look
+    alignSelf: 'center',
+    maxWidth: 550, // Technical responsive max width
   },
   menuCard: {
     flexDirection: 'row',

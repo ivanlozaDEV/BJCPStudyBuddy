@@ -17,6 +17,7 @@ export const translations = {
     flashcardsDesc: 'Pon a prueba tu memoria adivinando estilos por sus descriptores.',
     offFlavors: 'Guía de Off-Flavors',
     offFlavorsDesc: 'Aprende a identificar, describir y prevenir los defectos en la cerveza.',
+    settingsDesc: 'Configura el idioma, respuestas hápticas y recursos oficiales del BJCP.',
     
     // Explore / Search Screen
     searchPlaceholder: 'Buscar por estilo, ID, descriptor...',
@@ -107,6 +108,7 @@ export const translations = {
     flashcardsDesc: 'Test your memory by guessing styles from their descriptors.',
     offFlavors: 'Off-Flavors Guide',
     offFlavorsDesc: 'Learn to identify, describe, and prevent beer defects.',
+    settingsDesc: 'Configure language, haptic feedback, and official BJCP resources.',
     
     // Explore / Search Screen
     searchPlaceholder: 'Search by style, ID, descriptor...',
