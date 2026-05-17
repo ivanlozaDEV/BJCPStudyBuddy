@@ -66,12 +66,12 @@ export default function GlossaryScreen() {
                 router.replace('/');
               }
             }} 
-            style={styles.backButton}
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <Text style={styles.backText}>{t('back')}</Text>
+            <Text style={styles.backText}>←</Text>
           </Pressable>
           <ThemedText style={styles.headerTitle}>{t('glossaryTitle')}</ThemedText>
-          <View style={{ width: 60 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Live Search Filter Box */}
@@ -192,14 +192,20 @@ const styles = StyleSheet.create({
     height: 48,
   },
   backButton: {
-    paddingVertical: Spacing.one,
-    paddingRight: Spacing.four,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   backText: {
-    fontSize: 24,
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  pressed: {
+    opacity: 0.7,
   },
   headerTitle: {
     fontSize: 20,

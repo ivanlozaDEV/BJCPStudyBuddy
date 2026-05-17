@@ -56,12 +56,12 @@ export default function OffFlavorsScreen() {
                 router.replace('/');
               }
             }} 
-            style={styles.backButton}
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <Text style={styles.backText}>{t('back')}</Text>
+            <Text style={styles.backText}>←</Text>
           </Pressable>
           <ThemedText style={styles.headerTitle}>{t('offFlavors')}</ThemedText>
-          <View style={{ width: 60 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Live Search Filter Box */}
@@ -181,21 +181,28 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   backButton: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Spacing.one,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   backText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
-    fontFamily: Fonts.spaceGrotesk,
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  pressed: {
+    opacity: 0.7,
   },
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '900',
     fontFamily: Fonts.spaceGroteskBold,
+    flex: 1,
+    textAlign: 'center',
   },
   searchWrapper: {
     paddingHorizontal: Spacing.four,

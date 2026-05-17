@@ -158,6 +158,7 @@ export default function ExploreScreen() {
                     color: '#D99B26', // Premium warm brand amber
                     fontWeight: '700',
                     textDecorationLine: 'underline',
+                    ...({ outlineStyle: 'none' } as any), // Remove web focus outline ring
                   }}
                 >
                   {part}
@@ -194,10 +195,64 @@ export default function ExploreScreen() {
   const renderTextWithGlossaryLinks = (text: string) => {
     if (!text) return null;
 
-    // 1. Build term matching map
+    // 1. Build term matching map from GLOSSARY_DATA
     const langPatterns = GLOSSARY_DATA.map(term => {
       const patterns = language === 'es' ? (term.patterns_es || []) : (term.patterns_en || []);
       return { term, patterns };
+    });
+
+    // 2. Also map TAG_DEFINITIONS_DATA into this patterns list to highlight style tags!
+    TAG_DEFINITIONS_DATA.forEach(tagDef => {
+      const patterns: string[] = [];
+      
+      if (language === 'es') {
+        const tagEs = tagDef.tag_es;
+        if (tagEs) {
+          patterns.push(tagEs);
+          patterns.push(tagEs.replace(/-/g, ' '));
+          if (tagEs.includes('á')) {
+            patterns.push(tagEs.replace(/á/g, 'a'));
+            patterns.push(tagEs.replace(/á/g, 'a').replace(/-/g, ' '));
+          }
+          if (tagEs.includes('í')) {
+            patterns.push(tagEs.replace(/í/g, 'i'));
+            patterns.push(tagEs.replace(/í/g, 'i').replace(/-/g, ' '));
+          }
+          if (tagEs.includes('ó')) {
+            patterns.push(tagEs.replace(/ó/g, 'o'));
+            patterns.push(tagEs.replace(/ó/g, 'o').replace(/-/g, ' '));
+          }
+          if (tagEs.includes('ú')) {
+            patterns.push(tagEs.replace(/ú/g, 'u'));
+            patterns.push(tagEs.replace(/ú/g, 'u').replace(/-/g, ' '));
+          }
+        }
+        const cleanName = tagDef.name_es.split('(')[0].trim().toLowerCase();
+        patterns.push(cleanName);
+        if (cleanName.includes('á')) patterns.push(cleanName.replace(/á/g, 'a'));
+        if (cleanName.includes('í')) patterns.push(cleanName.replace(/í/g, 'i'));
+        if (cleanName.includes('ó')) patterns.push(cleanName.replace(/ó/g, 'o'));
+        if (cleanName.includes('ú')) patterns.push(cleanName.replace(/ú/g, 'u'));
+      } else {
+        patterns.push(tagDef.tag);
+        patterns.push(tagDef.tag.replace(/-/g, ' '));
+        const cleanName = tagDef.name_en.split('(')[0].trim().toLowerCase();
+        patterns.push(cleanName);
+      }
+
+      const uniquePatterns = Array.from(new Set(patterns)).filter(p => p.length > 2);
+
+      const projectedTerm: GlossaryTerm = {
+        id: tagDef.tag,
+        name_es: tagDef.name_es,
+        name_en: tagDef.name_en,
+        definition_es: tagDef.description_es,
+        definition_en: tagDef.description_en,
+        patterns_es: [],
+        patterns_en: []
+      };
+
+      langPatterns.push({ term: projectedTerm, patterns: uniquePatterns });
     });
 
     // Flatten patterns into a single sorted list
@@ -217,10 +272,11 @@ export default function ExploreScreen() {
 
     // Build the dynamic regex alternation with word boundaries using non-capturing groups
     const regexParts = flatPatterns.map(p => {
-      if (p.patternStr.includes('\\b')) {
-        return `(?:${p.patternStr})`;
+      const escaped = p.patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (escaped.includes('\\b')) {
+        return `(?:${escaped})`;
       }
-      return `\\b(?:${p.patternStr})\\b`;
+      return `\\b(?:${escaped})\\b`;
     });
 
     const combinedRegex = new RegExp(`(${regexParts.join('|')})`, 'gi');
@@ -238,7 +294,8 @@ export default function ExploreScreen() {
           if (index % 2 !== 0 && part) {
             // Find which term matched this part
             const matchedPattern = flatPatterns.find(p => {
-              const pRegex = new RegExp(p.patternStr.includes('\\b') ? p.patternStr : `^${p.patternStr}$`, 'i');
+              const escaped = p.patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const pRegex = new RegExp(escaped.includes('\\b') ? escaped : `^${escaped}$`, 'i');
               return pRegex.test(part);
             });
 
@@ -249,13 +306,17 @@ export default function ExploreScreen() {
                   key={index}
                   onPress={() => handleGlossaryLinkPress(term)}
                   style={{
+                    color: '#0A0C10', // Leave the letter black
                     textDecorationLine: 'underline',
-                    textDecorationColor: '#A0A0A0', // Discreet gray underline
+                    textDecorationColor: '#0A0C10', // Normal black underline
+                    ...({ outlineStyle: 'none' } as any), // Remove web focus outline ring
                   }}
                 >
                   {part}
                 </Text>
               );
+            } else {
+              return part;
             }
           }
 
@@ -871,41 +932,38 @@ export default function ExploreScreen() {
                         {t('tags').split('.')[1]?.trim() || t('tags')}
                       </Text>
                     </View>
-                    <View style={styles.tagsContainer}>
-                      {selectedStyle.tags.map((tag, i) => {
-                        const tagDef = TAG_DEFINITIONS_DATA.find(
-                          tData => 
-                            tData.tag.toLowerCase() === tag.toLowerCase() || 
-                            (tData.tag_es && tData.tag_es.toLowerCase() === tag.toLowerCase())
-                        );
+                    <View style={{ marginTop: Spacing.two }}>
+                      <Text style={styles.detailText}>
+                        {selectedStyle.tags.map((tag, i) => {
+                          const tagDef = TAG_DEFINITIONS_DATA.find(
+                            tData => 
+                              tData.tag.toLowerCase() === tag.toLowerCase() || 
+                              (tData.tag_es && tData.tag_es.toLowerCase() === tag.toLowerCase())
+                          );
 
-                        return (
-                          <Pressable 
-                            key={i} 
-                            style={({ pressed }) => [
-                              styles.tagBadge,
-                              { 
-                                opacity: pressed ? 0.7 : 1,
-                                backgroundColor: tagDef ? 'rgba(217, 155, 38, 0.15)' : 'rgba(47, 93, 115, 0.1)',
-                                borderColor: tagDef ? '#D99B26' : 'transparent',
-                                borderWidth: tagDef ? 1 : 0
-                              }
-                            ]}
-                            onPress={() => {
-                              if (tagDef) {
-                                handleTagLinkPress(tagDef);
-                              }
-                            }}
-                          >
-                            <Text style={[
-                              styles.tagBadgeText,
-                              tagDef && { color: '#D99B26', fontWeight: '900' }
-                            ]}>
-                              #{tag}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
+                          return (
+                            <React.Fragment key={i}>
+                              {i > 0 && <Text style={{ color: '#0A0C10', fontWeight: '500' }}>, </Text>}
+                              <Text
+                                onPress={() => {
+                                  if (tagDef) {
+                                    handleTagLinkPress(tagDef);
+                                  }
+                                }}
+                                style={{
+                                  color: '#0A0C10',
+                                  fontWeight: '500',
+                                  textDecorationLine: 'underline',
+                                  textDecorationColor: '#0A0C10',
+                                  ...({ outlineStyle: 'none' } as any),
+                                }}
+                              >
+                                {tag}
+                              </Text>
+                            </React.Fragment>
+                          );
+                        })}
+                      </Text>
                     </View>
                   </View>
 

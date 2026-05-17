@@ -87,14 +87,13 @@ export default function SettingsScreen() {
             }}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <ThemedText style={[styles.backText, { color: theme.tint }]}>
-              {t('back')}
-            </ThemedText>
+            <ThemedText style={styles.backText}>←</ThemedText>
           </Pressable>
           
           <ThemedText type="subtitle" style={styles.title}>
             {t('settings')}
           </ThemedText>
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView 
@@ -224,26 +223,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     marginBottom: Spacing.two,
   },
   backButton: {
-    paddingVertical: Spacing.one,
-    paddingRight: Spacing.three,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   backText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: Fonts.manropeBold,
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   pressed: {
     opacity: 0.7,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: Fonts.spaceGroteskBold,
+    flex: 1,
+    textAlign: 'center',
+    color: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
