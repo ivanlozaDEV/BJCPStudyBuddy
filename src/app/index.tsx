@@ -11,46 +11,53 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { BeerBubbles } from '@/components/beer-bubbles';
 import { BeerLogo } from '@/components/beer-logo';
+import { MenuIcon } from '@/components/menu-icons';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const menuOptions = [
+  const menuOptions: {
+    id: string;
+    title: string;
+    description: string;
+    icon: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings';
+    route: '/explore' | '/comparator' | '/offflavors' | '/flashcards' | '/settings';
+  }[] = [
     {
       id: 'explore',
       title: t('exploreStyles'),
       description: t('exploreStylesDesc'),
-      icon: '🔍',
-      route: '/explore' as const,
+      icon: 'explore',
+      route: '/explore',
     },
     {
       id: 'comparator',
       title: t('styleComparator'),
       description: t('styleComparatorDesc'),
-      icon: '⚖️',
-      route: '/comparator' as const,
+      icon: 'comparator',
+      route: '/comparator',
     },
     {
       id: 'offflavors',
       title: t('offFlavors'),
       description: t('offFlavorsDesc'),
-      icon: '🔬',
-      route: '/offflavors' as const,
+      icon: 'offflavors',
+      route: '/offflavors',
     },
     {
       id: 'flashcards',
       title: t('flashcards'),
       description: t('flashcardsDesc'),
-      icon: '🃏',
-      route: '/flashcards' as const,
+      icon: 'flashcards',
+      route: '/flashcards',
     },
     {
       id: 'settings',
       title: t('settings'),
       description: t('settingsDesc'),
-      icon: '⚙️',
-      route: '/settings' as const,
+      icon: 'settings',
+      route: '/settings',
     },
   ];
 
@@ -94,7 +101,7 @@ export default function HomeScreen() {
                 >
                   <View style={styles.cardLeft}>
                     <View style={[styles.iconWrapper, { backgroundColor: theme.backgroundSelected }]}>
-                      <ThemedText style={styles.cardIcon}>{option.icon}</ThemedText>
+                      <MenuIcon name={option.icon} />
                     </View>
                   </View>
                   

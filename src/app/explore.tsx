@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 
+import Svg, { Path } from 'react-native-svg';
+import { DetailIcon } from '@/components/detail-icons';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -451,9 +453,43 @@ export default function ExploreScreen() {
                 {/* Visual Title Header */}
                 <View style={styles.styleTitleBlock}>
                   <View style={styles.styleMainRow}>
-                    <View style={styles.styleBadgeBig}>
-                      <Text style={styles.styleBadgeBigText}>{selectedStyle.id}</Text>
-                    </View>
+                    {/* Reusable CSS Beer Mug filled with SRM Color */}
+                    {(() => {
+                      const avgSrm = (selectedStyle.srmMin + selectedStyle.srmMax) / 2;
+                      const beerColor = getSRMColor(avgSrm);
+                      const contrastColor = getSRMContrastColor(avgSrm);
+                      return (
+                        <View style={[styles.beerGlassContainer, { 
+                          marginRight: Spacing.four, 
+                          transform: [{ scale: 1.2 }], 
+                          marginLeft: 6 
+                        }]}>
+                          {/* Curved Glass Handle on the left side of the Mug */}
+                          <View style={styles.beerGlassHandle} />
+
+                          {/* Puffy Foam Head Base */}
+                          <View style={styles.beerGlassFoam}>
+                            {/* Extra foam bubble on top of the collar for fluffiness */}
+                            <View style={styles.beerGlassFoamBubble} />
+                          </View>
+                          
+                          {/* Beer Mug Body filled with SRM Color, highlight and carbonation bubbles */}
+                          <View style={[styles.beerGlassLiquid, { backgroundColor: beerColor }]}>
+                            {/* Cold glass reflection highlight line */}
+                            <View style={styles.beerGlassHighlight} />
+
+                            {/* Rising Carbonation micro-bubbles */}
+                            <View style={styles.beerGlassBubble1} />
+                            <View style={styles.beerGlassBubble2} />
+
+                            {/* Centered Style ID */}
+                            <Text style={[styles.beerGlassText, { color: contrastColor }]}>
+                              {selectedStyle.id}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })()}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.styleMainName}>
                         {selectedStyle.name}
@@ -468,21 +504,23 @@ export default function ExploreScreen() {
                   <View style={styles.srmVisualBarWrapper}>
                     <Text style={styles.srmBarLabel}>{t('srmColorVisual')}</Text>
                     <View style={styles.srmVisualBarTrack}>
-                      {Array.from({ length: 40 }, (_, idx) => {
-                        const srmVal = idx + 1;
-                        const col = getSRMColor(srmVal);
-                        const isInRange = srmVal >= selectedStyle.srmMin && srmVal <= selectedStyle.srmMax;
-                        return (
-                          <View 
-                            key={idx} 
-                            style={[
-                              styles.srmColorPill, 
-                              { backgroundColor: col, opacity: isInRange ? 1 : 0.15 },
-                              isInRange && { borderColor: '#FFFFFF', borderWidth: 1 }
-                            ]} 
-                          />
-                        );
-                      })}
+                      {(() => {
+                        const min = selectedStyle.srmMin;
+                        const max = selectedStyle.srmMax;
+                        return Array.from({ length: 24 }, (_, idx) => {
+                          const srmVal = min === max ? min : min + (idx / 23) * (max - min);
+                          const col = getSRMColor(Math.round(srmVal));
+                          return (
+                            <View 
+                              key={idx} 
+                              style={[
+                                styles.srmColorPill, 
+                                { backgroundColor: col }
+                              ]} 
+                            />
+                          );
+                        });
+                      })()}
                     </View>
                     <View style={styles.srmLegendRow}>
                       <Text style={styles.srmLegendText}>SRM Mín: {selectedStyle.srmMin}</Text>
@@ -534,49 +572,89 @@ export default function ExploreScreen() {
                   
                   {/* Overall Impression */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('impression')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="impression" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('impression').split('.')[1]?.trim() || t('impression')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.overallImpression}</Text>
                   </View>
 
                   {/* Aroma */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('aroma')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="aroma" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('aroma').split('.')[1]?.trim() || t('aroma')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.aroma}</Text>
                   </View>
 
                   {/* Appearance */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('appearance')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="appearance" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('appearance').split('.')[1]?.trim() || t('appearance')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.appearance}</Text>
                   </View>
 
                   {/* Flavor */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('flavor')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="flavor" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('flavor').split('.')[1]?.trim() || t('flavor')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.flavor}</Text>
                   </View>
 
                   {/* Mouthfeel */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('mouthfeel')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="mouthfeel" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('mouthfeel').split('.')[1]?.trim() || t('mouthfeel')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.mouthfeel}</Text>
                   </View>
 
                   {/* History */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('history')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="history" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('history').split('.')[1]?.trim() || t('history')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.history}</Text>
                   </View>
 
                   {/* Ingredients */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('ingredients')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="ingredients" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('ingredients').split('.')[1]?.trim() || t('ingredients')}
+                      </Text>
+                    </View>
                     <Text style={styles.detailText}>{selectedStyle.ingredients}</Text>
                   </View>
 
                   {/* Commercial Examples */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('examples')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="examples" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('examples').split('.')[1]?.trim() || t('examples')}
+                      </Text>
+                    </View>
                     <View style={styles.examplesList}>
                       {selectedStyle.commercialExamples.map((ex, i) => (
                         <View key={i} style={styles.exampleItem}>
@@ -588,7 +666,12 @@ export default function ExploreScreen() {
 
                   {/* Tags */}
                   <View style={styles.detailCard}>
-                    <Text style={styles.detailHeading}>{t('tags')}</Text>
+                    <View style={styles.detailHeaderRow}>
+                      <DetailIcon name="tags" style={styles.detailHeaderIcon} />
+                      <Text style={styles.detailHeading}>
+                        {t('tags').split('.')[1]?.trim() || t('tags')}
+                      </Text>
+                    </View>
                     <View style={styles.tagsContainer}>
                       {selectedStyle.tags.map((tag, i) => (
                         <View key={i} style={styles.tagBadge}>
@@ -1048,7 +1131,7 @@ const styles = StyleSheet.create({
   },
   srmVisualBarTrack: {
     flexDirection: 'row',
-    height: 18,
+    height: 28, // Sized up for spectacular visual clarity!
     borderRadius: Spacing.one,
     overflow: 'hidden',
   },
@@ -1113,13 +1196,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAEAEA',
   },
+  detailHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: Spacing.two,
+  },
+  detailHeaderIcon: {
+    marginRight: 2,
+  },
   detailHeading: {
     fontSize: 13,
-    letterSpacing: 1,
-    fontWeight: '800',
+    letterSpacing: 1.2,
+    fontWeight: '900',
     color: '#2F5D73', // Vibrant brand petroleum blue
     textTransform: 'uppercase',
-    marginBottom: 2,
+    fontFamily: Fonts.spaceGroteskBold,
   },
   detailText: {
     fontSize: 14,

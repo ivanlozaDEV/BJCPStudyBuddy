@@ -50,7 +50,7 @@ export default function ComparatorScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Descriptive comparison active tab
-  const [activeTab, setActiveTab] = useState<'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history'>('impression');
+  const [activeTab, setActiveTab] = useState<'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history' | 'commercialExamples'>('impression');
 
   // Filtered styles for the picker modal using multi-field fuzzy search
   const filteredStyles = stylesList.filter(s => 
@@ -87,6 +87,7 @@ export default function ComparatorScreen() {
     { id: 'flavor' as const, label: t('flavor').split('.')[1]?.trim() || t('flavor') },
     { id: 'mouthfeel' as const, label: t('mouthfeel').split('.')[1]?.trim() || t('mouthfeel') },
     { id: 'history' as const, label: t('history').split('.')[1]?.trim() || t('history') },
+    { id: 'commercialExamples' as const, label: language === 'es' ? 'Ejemplos Comerciales' : 'Commercial Examples' },
   ];
 
   return (
@@ -321,6 +322,11 @@ export default function ComparatorScreen() {
                       {activeTab === 'flavor' && styleA.flavor}
                       {activeTab === 'mouthfeel' && styleA.mouthfeel}
                       {activeTab === 'history' && styleA.history}
+                      {activeTab === 'commercialExamples' && (
+                        styleA.commercialExamples.length > 0
+                          ? '• ' + styleA.commercialExamples.join('\n• ')
+                          : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
+                      )}
                     </Text>
                   </ScrollView>
                 </View>
@@ -338,6 +344,11 @@ export default function ComparatorScreen() {
                       {activeTab === 'flavor' && styleB.flavor}
                       {activeTab === 'mouthfeel' && styleB.mouthfeel}
                       {activeTab === 'history' && styleB.history}
+                      {activeTab === 'commercialExamples' && (
+                        styleB.commercialExamples.length > 0
+                          ? '• ' + styleB.commercialExamples.join('\n• ')
+                          : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
+                      )}
                     </Text>
                   </ScrollView>
                 </View>
@@ -466,7 +477,7 @@ const styles = StyleSheet.create({
   },
   selectorStack: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch', // Stretch child selectorCards to have the exact same height!
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     marginTop: Spacing.two,
@@ -549,15 +560,19 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three, // Slightly more padding for breathing space
     paddingHorizontal: Spacing.three,
     marginBottom: Spacing.two,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionHeaderTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 2, // Elegant wide tracking
     textTransform: 'uppercase',
+    textAlign: 'center',
+    fontFamily: Fonts.spaceGroteskBold,
   },
   comparisonGrid: {
     borderRadius: Spacing.three,
