@@ -21,8 +21,8 @@ export default function HomeScreen() {
     id: string;
     title: string;
     description: string;
-    icon: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings';
-    route: '/explore' | '/comparator' | '/offflavors' | '/flashcards' | '/settings';
+    icon: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings' | 'glossary';
+    route: '/explore' | '/comparator' | '/offflavors' | '/flashcards' | '/settings' | '/glossary';
   }[] = [
     {
       id: 'explore',
@@ -51,6 +51,13 @@ export default function HomeScreen() {
       description: t('flashcardsDesc'),
       icon: 'flashcards',
       route: '/flashcards',
+    },
+    {
+      id: 'glossary',
+      title: t('glossary'),
+      description: t('glossaryDesc'),
+      icon: 'glossary',
+      route: '/glossary',
     },
     {
       id: 'settings',

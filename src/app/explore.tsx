@@ -25,6 +25,7 @@ import {
   getBJCPStyles 
 } from '@/data/bjcp2021';
 import { fuzzyMatch } from '@/utils/fuzzy';
+import { GLOSSARY_DATA, GlossaryTerm } from '@/data/glossary';
 
 // SRM Color Mapping Helper for Visual SRM bars
 function getSRMColor(srm: number): string {
@@ -79,6 +80,10 @@ export default function ExploreScreen() {
   // Link Choice Modal State
   const [linkChoiceModalVisible, setLinkChoiceModalVisible] = useState(false);
   const [linkTargetStyle, setLinkTargetStyle] = useState<BeerStyle | null>(null);
+
+  // Glossary Modal States
+  const [selectedGlossaryTerm, setSelectedGlossaryTerm] = useState<GlossaryTerm | null>(null);
+  const [glossaryModalVisible, setGlossaryModalVisible] = useState(false);
 
   // Sync Search parameter from HomeScreen (Style of the Day)
   useEffect(() => {
@@ -153,6 +158,86 @@ export default function ExploreScreen() {
                     color: '#D99B26', // Premium warm brand amber
                     fontWeight: '700',
                     textDecorationLine: 'underline',
+                  }}
+                >
+                  {part}
+                </Text>
+              );
+            }
+          }
+
+          // Even indices are regular text parts
+          return part;
+        })}
+      </Text>
+    );
+  };
+
+  const handleGlossaryLinkPress = (term: GlossaryTerm) => {
+    setSelectedGlossaryTerm(term);
+    setGlossaryModalVisible(true);
+  };
+
+  const renderTextWithGlossaryLinks = (text: string) => {
+    if (!text) return null;
+
+    // 1. Build term matching map
+    const langPatterns = GLOSSARY_DATA.map(term => {
+      const patterns = language === 'es' ? (term.patterns_es || []) : (term.patterns_en || []);
+      return { term, patterns };
+    });
+
+    // Flatten patterns into a single sorted list
+    const flatPatterns: { patternStr: string; term: GlossaryTerm }[] = [];
+    langPatterns.forEach(({ term, patterns }) => {
+      patterns.forEach(p => {
+        flatPatterns.push({ patternStr: p, term });
+      });
+    });
+
+    // Sort by pattern string length descending to prevent partial matching
+    flatPatterns.sort((a, b) => b.patternStr.length - a.patternStr.length);
+
+    if (flatPatterns.length === 0) {
+      return <Text style={styles.detailText}>{text}</Text>;
+    }
+
+    // Build the dynamic regex alternation with word boundaries using non-capturing groups
+    const regexParts = flatPatterns.map(p => {
+      if (p.patternStr.includes('\\b')) {
+        return `(?:${p.patternStr})`;
+      }
+      return `\\b(?:${p.patternStr})\\b`;
+    });
+
+    const combinedRegex = new RegExp(`(${regexParts.join('|')})`, 'gi');
+
+    const parts = text.split(combinedRegex);
+
+    if (parts.length <= 1) {
+      return <Text style={styles.detailText}>{text}</Text>;
+    }
+
+    return (
+      <Text style={styles.detailText}>
+        {parts.map((part, index) => {
+          // Odd indices are matched patterns
+          if (index % 2 !== 0 && part) {
+            // Find which term matched this part
+            const matchedPattern = flatPatterns.find(p => {
+              const pRegex = new RegExp(p.patternStr.includes('\\b') ? p.patternStr : `^${p.patternStr}$`, 'i');
+              return pRegex.test(part);
+            });
+
+            if (matchedPattern) {
+              const term = matchedPattern.term;
+              return (
+                <Text
+                  key={index}
+                  onPress={() => handleGlossaryLinkPress(term)}
+                  style={{
+                    textDecorationLine: 'underline',
+                    textDecorationColor: '#A0A0A0', // Discreet gray underline
                   }}
                 >
                   {part}
@@ -653,7 +738,7 @@ export default function ExploreScreen() {
                         {t('impression').split('.')[1]?.trim() || t('impression')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.overallImpression}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.overallImpression)}
                   </View>
 
                   {/* Aroma */}
@@ -664,7 +749,7 @@ export default function ExploreScreen() {
                         {t('aroma').split('.')[1]?.trim() || t('aroma')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.aroma}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.aroma)}
                   </View>
 
                   {/* Appearance */}
@@ -675,7 +760,7 @@ export default function ExploreScreen() {
                         {t('appearance').split('.')[1]?.trim() || t('appearance')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.appearance}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.appearance)}
                   </View>
 
                   {/* Flavor */}
@@ -686,7 +771,7 @@ export default function ExploreScreen() {
                         {t('flavor').split('.')[1]?.trim() || t('flavor')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.flavor}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.flavor)}
                   </View>
 
                   {/* Mouthfeel */}
@@ -697,7 +782,7 @@ export default function ExploreScreen() {
                         {t('mouthfeel').split('.')[1]?.trim() || t('mouthfeel')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.mouthfeel}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.mouthfeel)}
                   </View>
 
                   {/* Comments */}
@@ -709,7 +794,7 @@ export default function ExploreScreen() {
                           {t('comments').split('.')[1]?.trim() || t('comments')}
                         </Text>
                       </View>
-                      <Text style={styles.detailText}>{selectedStyle.comments}</Text>
+                      {renderTextWithGlossaryLinks(selectedStyle.comments)}
                     </View>
                   ) : null}
 
@@ -734,7 +819,7 @@ export default function ExploreScreen() {
                         {t('history').split('.')[1]?.trim() || t('history')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.history}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.history)}
                   </View>
 
                   {/* Ingredients */}
@@ -745,7 +830,7 @@ export default function ExploreScreen() {
                         {t('ingredients').split('.')[1]?.trim() || t('ingredients')}
                       </Text>
                     </View>
-                    <Text style={styles.detailText}>{selectedStyle.ingredients}</Text>
+                    {renderTextWithGlossaryLinks(selectedStyle.ingredients)}
                   </View>
 
                   {/* Commercial Examples */}
@@ -868,6 +953,53 @@ export default function ExploreScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Dynamic Glossary Term Details Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={glossaryModalVisible}
+        onRequestClose={() => setGlossaryModalVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setGlossaryModalVisible(false)}
+        >
+          <View 
+            style={[
+              styles.glossaryModalContent,
+              { 
+                backgroundColor: theme.backgroundElement,
+                borderColor: '#FFD54F', // Shiny beer gold border
+              }
+            ]}
+          >
+            <View style={styles.glossaryModalHeader}>
+              <View style={[styles.glossaryBadge, { backgroundColor: theme.backgroundSelected }]}>
+                <Text style={{ color: theme.tint, fontSize: 18, fontWeight: '900' }}>📖</Text>
+              </View>
+              <Text style={[styles.glossaryModalTitle, { color: theme.text }]}>
+                {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.name_es : selectedGlossaryTerm.name_en) : ''}
+              </Text>
+            </View>
+
+            <ScrollView style={styles.glossaryModalBody} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.glossaryModalText, { color: theme.textSecondary }]}>
+                {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.definition_es : selectedGlossaryTerm.definition_en) : ''}
+              </Text>
+            </ScrollView>
+
+            <Pressable 
+              style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
+              onPress={() => setGlossaryModalVisible(false)}
+            >
+              <Text style={styles.glossaryModalButtonText}>
+                {language === 'es' ? 'Cerrar' : 'Close'}
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
       </Modal>
 
     </ThemedView>
@@ -1492,5 +1624,64 @@ const styles = StyleSheet.create({
   choiceCancelButtonText: {
     fontWeight: '700',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  glossaryModalContent: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: Spacing.three,
+    borderWidth: 2,
+    padding: Spacing.five,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
+  },
+  glossaryModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.four,
+  },
+  glossaryBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  glossaryModalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: Fonts.spaceGroteskBold,
+    flex: 1,
+  },
+  glossaryModalBody: {
+    maxHeight: 200,
+    marginBottom: Spacing.five,
+  },
+  glossaryModalText: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  glossaryModalButton: {
+    borderRadius: Spacing.two,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glossaryModalButtonText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontFamily: Fonts.spaceGroteskBold,
   },
 });

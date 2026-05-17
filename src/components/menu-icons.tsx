@@ -10,7 +10,7 @@ import Svg, {
 } from 'react-native-svg';
 
 interface MenuIconProps extends SvgProps {
-  name: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings';
+  name: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings' | 'glossary';
 }
 
 export function MenuIcon({ name, ...props }: MenuIconProps) {
@@ -186,6 +186,39 @@ export function MenuIcon({ name, ...props }: MenuIconProps) {
           <Circle cx={12} cy={16.5} r={0.6} fill="#FFA000" />
           <Circle cx={7.5} cy={12} r={0.6} fill="#FFA000" />
           <Circle cx={16.5} cy={12} r={0.6} fill="#FFA000" />
+        </Svg>
+      );
+
+    case "glossary": // Open dictionary book + Beer mug watermark
+      return (
+        <Svg {...defaultProps}>
+          {/* Opened Book Left Page */}
+          <Path 
+            d="M12 20c-1.5-1.5-5-1.5-8-1.5v-13c3 0 6.5 0 8 1.5M12 20c1.5-1.5 5-1.5 8-1.5v-13c-3 0-6.5 0-8 1.5" 
+            fill="#FFF" 
+            stroke="#90A4AE" 
+            strokeWidth={1.5} 
+            strokeLinejoin="round"
+          />
+          {/* Book Spine Center Line */}
+          <Line x1={12} y1={5} x2={12} y2={20} stroke="#90A4AE" strokeWidth={1.5} />
+          
+          {/* Left Page Text Lines representing glossary index */}
+          <Line x1={6} y1={9} x2={10} y2={9} stroke="#B0BEC5" strokeWidth={1.2} strokeLinecap="round" />
+          <Line x1={6} y1={12} x2={10} y2={12} stroke="#B0BEC5" strokeWidth={1.2} strokeLinecap="round" />
+          <Line x1={6} y1={15} x2={9} y2={15} stroke="#B0BEC5" strokeWidth={1.2} strokeLinecap="round" />
+          
+          {/* Right Page Beer Mug Graphic watermark */}
+          <G transform="translate(14, 8)">
+            <Path 
+              d="M1 2v4c0 .8.5 1.3 1.3 1.3h1.4c.8 0 1.3-.5 1.3-1.3v-4H1z" 
+              fill="#FFD54F" 
+            />
+            {/* White Foam */}
+            <Path d="M0.8 1.8c0-.4.4-.6.8-.6s.6.2.8 0c.2.2.4.2.8.2c.4 0 .6-.2.8-.2s.2.4.2.6H0.8z" fill="#E0F7FA" />
+            {/* Handle */}
+            <Path d="M5 3.5h1c.3 0 .5.2.5.5v1c0 .3-.2.5-.5.5h-1" stroke="#FFD54F" strokeWidth={0.8} />
+          </G>
         </Svg>
       );
   }

@@ -110,7 +110,16 @@ export default function ComparatorScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Sticky Premium Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Pressable 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }} 
+            style={styles.backButton}
+          >
             <Text style={styles.backText}>{t('back')}</Text>
           </Pressable>
           <ThemedText style={styles.headerTitle}>{t('styleComparator')}</ThemedText>

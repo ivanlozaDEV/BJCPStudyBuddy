@@ -78,7 +78,13 @@ export default function SettingsScreen() {
         {/* Header with Back Button */}
         <View style={styles.header}>
           <Pressable 
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
             <ThemedText style={[styles.backText, { color: theme.tint }]}>

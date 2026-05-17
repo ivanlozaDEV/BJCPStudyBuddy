@@ -6,7 +6,7 @@ export const translations = {
     appName: 'BJCP Study Buddy',
     welcomeBack: '¡Hola de nuevo, Juez! 🍻',
     selectOption: 'Selecciona una herramienta',
-    back: '← Volver',
+    back: '←',
     
     // Home Dashboard Cards
     exploreStyles: 'Explorar Estilos',
@@ -17,7 +17,9 @@ export const translations = {
     flashcardsDesc: 'Pon a prueba tu memoria adivinando estilos por sus descriptores.',
     offFlavors: 'Guía de Off-Flavors',
     offFlavorsDesc: 'Aprende a identificar, describir y prevenir los defectos en la cerveza.',
-    settingsDesc: 'Configura el idioma, respuestas hápticas y recursos oficiales del BJCP.',
+    glossary: 'Glosario BJCP',
+    glossaryDesc: 'Domina los conceptos técnicos y sensoriales de elaboración de cerveza.',
+    settingsDesc: 'Configura el idioma, respuestas hápticas y recursos oficiales del BJCP',
     
     // Style Comparator
     selectStyleA: 'Seleccionar Estilo A',
@@ -28,6 +30,10 @@ export const translations = {
     
     // Off-Flavors Screen
     offFlavorTitle: 'Guía de Defectos (Off-Flavors)',
+    
+    // Glossary Screen
+    glossaryTitle: 'Glosario',
+    searchGlossary: 'Buscar término o definición...',
     searchOffFlavors: 'Buscar por defecto, descriptor o origen...',
     sensoryDescription: 'Descripción Sensorial',
     originCauses: 'Origen y Causas',
@@ -114,7 +120,7 @@ export const translations = {
     appName: 'BJCP Study Buddy',
     welcomeBack: 'Welcome back, Judge! 🍻',
     selectOption: 'Select a tool',
-    back: '← Back',
+    back: '←',
     
     // Home Dashboard Cards
     exploreStyles: 'Explore Styles',
@@ -125,6 +131,8 @@ export const translations = {
     flashcardsDesc: 'Test your memory by guessing styles from their descriptors.',
     offFlavors: 'Off-Flavors Guide',
     offFlavorsDesc: 'Learn to identify, describe, and prevent beer defects.',
+    glossary: 'BJCP Glossary',
+    glossaryDesc: 'Master technical and sensory concepts of beer brewing.',
     settingsDesc: 'Configure language, haptic feedback, and official BJCP resources.',
     
     // Style Comparator
@@ -136,6 +144,10 @@ export const translations = {
     
     // Off-Flavors Screen
     offFlavorTitle: 'Off-Flavors Guide',
+    
+    // Glossary Screen
+    glossaryTitle: 'Glossary',
+    searchGlossary: 'Search term or definition...',
     searchOffFlavors: 'Search by defect, descriptor, or cause...',
     sensoryDescription: 'Sensory Description',
     originCauses: 'Origin and Causes',
