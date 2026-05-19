@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Pressable, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Pressable, View, ScrollView, Alert, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing, Colors } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing, Colors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { BeerStyle, getBJCPStyles } from '@/data/bjcp2021';
@@ -98,7 +98,10 @@ export default function FlashcardsScreen() {
     }
     setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
     setAnsweredStyles(prev => [...prev, currentStyle.id]);
-    setIsFlipped(true);
+    // Auto-advance to next card after a brief delay
+    setTimeout(() => {
+      loadNextFcCard();
+    }, 250);
   };
   
   const loadNextFcCard = () => {
@@ -158,20 +161,30 @@ export default function FlashcardsScreen() {
   const renderToggle = () => (
     <View style={styles.toggleContainer}>
       <Pressable 
-        style={[styles.toggleBtn, studyMode === 'flashcards' && { backgroundColor: theme.tint, borderColor: theme.tint }]}
+        style={[
+          styles.toggleBtn, 
+          studyMode === 'flashcards' 
+            ? { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundElement } 
+            : { backgroundColor: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)' }
+        ]}
         onPress={() => setStudyMode('flashcards')}
       >
-        <ThemedText style={{ color: studyMode === 'flashcards' ? '#FFF' : theme.text, fontSize: 14, fontWeight: '700' }}>
+        <Text style={{ color: studyMode === 'flashcards' ? theme.tint : '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: Fonts.manropeBold }}>
           Flashcards
-        </ThemedText>
+        </Text>
       </Pressable>
       <Pressable 
-        style={[styles.toggleBtn, studyMode === 'quiz' && { backgroundColor: theme.tint, borderColor: theme.tint }]}
+        style={[
+          styles.toggleBtn, 
+          studyMode === 'quiz' 
+            ? { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundElement } 
+            : { backgroundColor: 'rgba(255, 255, 255, 0.08)', borderColor: 'rgba(255, 255, 255, 0.2)' }
+        ]}
         onPress={() => setStudyMode('quiz')}
       >
-        <ThemedText style={{ color: studyMode === 'quiz' ? '#FFF' : theme.text, fontSize: 14, fontWeight: '700' }}>
+        <Text style={{ color: studyMode === 'quiz' ? theme.tint : '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: Fonts.manropeBold }}>
           Quiz Activo
-        </ThemedText>
+        </Text>
       </Pressable>
     </View>
   );
@@ -184,15 +197,15 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.header}>
-          <ThemedText type="subtitle" style={styles.title}>Estudio Libre</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Progreso: <ThemedText type="smallBold" style={{ color: theme.tint }}>{answeredStyles.length}</ThemedText>/{sessionStyles.length}
-          </ThemedText>
+          <Text style={styles.title}>Estudio Libre</Text>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
+            Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{answeredStyles.length}</Text>/{sessionStyles.length}
+          </Text>
         </View>
 
         <View style={styles.progressWrapper}>
-          <View style={[styles.progressBarTrack, { backgroundColor: theme.backgroundElement }]}>
-            <View style={[styles.progressBarFill, { backgroundColor: theme.tint, width: `${(answeredStyles.length / (sessionStyles.length || 1)) * 100}%` }]} />
+          <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
+            <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${(answeredStyles.length / (sessionStyles.length || 1)) * 100}%` }]} />
           </View>
         </View>
 
@@ -201,48 +214,48 @@ export default function FlashcardsScreen() {
             onPress={handleFlipCard}
             style={({ pressed }) => [
               styles.cardContainer,
-              { backgroundColor: theme.backgroundElement, borderColor: isFlipped ? theme.tint : theme.border, borderWidth: isFlipped ? 2 : 1 },
+              { backgroundColor: theme.backgroundElement, borderColor: isFlipped ? theme.gold : theme.border, borderWidth: isFlipped ? 2 : 1.5 },
               pressed && styles.cardPressed
             ]}
           >
-            <View style={[styles.cardColorStripe, { backgroundColor: cardSrmColor }]} />
+            <View style={[styles.cardColorStripe, { backgroundColor: theme.gold }]} />
 
             {!isFlipped ? (
               <View style={styles.cardSide}>
                 <View style={styles.cardHeader}>
-                  <ThemedText type="code" style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</ThemedText>
-                  <ThemedText type="smallBold" themeColor="textSecondary">Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</ThemedText>
+                  <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
+                  <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
                 </View>
                 <View style={styles.questionSection}>
-                  <ThemedText type="smallBold" style={styles.cardSectionLabel}>Impresión General:</ThemedText>
-                  <ThemedText type="default" style={styles.cardImpression}>{currentStyle.overallImpression}</ThemedText>
+                  <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+                  <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
                 </View>
                 <View style={styles.vitalCluesContainer}>
-                  <ThemedText type="smallBold" style={styles.cardSectionLabel}>Estadísticas Vitales:</ThemedText>
+                  <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
                   <View style={styles.cluesRow}>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="code" style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</ThemedText></View>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="code" style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</ThemedText></View>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><ThemedText type="code" style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</ThemedText></View>
+                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
+                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
+                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</Text></View>
                   </View>
                 </View>
               </View>
             ) : (
               <View style={styles.cardSide}>
                 <View style={styles.cardHeader}>
-                  <ThemedText type="code" style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</ThemedText>
-                  <ThemedText type="smallBold" style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</ThemedText>
+                  <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
+                  <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
                 </View>
                 <View style={styles.answerHeader}>
-                  <ThemedText type="subtitle" style={styles.answerStyleName}>{currentStyle.name}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">{currentStyle.category}</ThemedText>
+                  <Text style={styles.answerStyleName}>{currentStyle.name}</Text>
+                  <Text style={{ fontSize: 13, fontFamily: Fonts.spaceGrotesk, color: theme.textSecondary }}>{currentStyle.category}</Text>
                 </View>
                 <View style={styles.answerSection}>
-                  <ThemedText type="smallBold" style={styles.cardSectionLabel}>Ejemplos Comerciales:</ThemedText>
+                  <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
                   <View style={styles.examplesContainer}>
                     {currentStyle.commercialExamples.map((ex, i) => (
                       <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
                         <QuizIcon name="styles" color={theme.textSecondary} size={12} />
-                        <ThemedText type="small">{ex}</ThemedText>
+                        <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.text }}>{ex}</Text>
                       </View>
                     ))}
                   </View>
@@ -252,28 +265,39 @@ export default function FlashcardsScreen() {
           </Pressable>
 
           <View style={styles.controlsContainer}>
-            {!isCardAnswered ? (
+            {isCardAnswered ? (
+              <Pressable onPress={loadNextFcCard} style={[styles.nextCardBtn, { backgroundColor: theme.gold }]}>
+                <View style={styles.btnContentRow}>
+                  <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
+                    {language === 'es' ? 'Siguiente Ficha' : 'Next Card'}
+                  </Text>
+                  <QuizIcon name="arrow" color={theme.text} size={16} />
+                </View>
+              </Pressable>
+            ) : !isFlipped ? (
+              <Pressable onPress={() => setIsFlipped(true)} style={[styles.nextCardBtn, { backgroundColor: theme.gold }]}>
+                <View style={styles.btnContentRow}>
+                  <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
+                    {language === 'es' ? 'Revelar Estilo' : 'Reveal Style'}
+                  </Text>
+                  <QuizIcon name="arrow" color={theme.text} size={16} />
+                </View>
+              </Pressable>
+            ) : (
               <View style={styles.answerButtonsRow}>
-                <Pressable onPress={() => handleFcAnswer(false)} style={[styles.answerBtn, styles.incorrectBtn]}>
+                <Pressable onPress={() => handleFcAnswer(false)} style={[styles.answerBtn, { backgroundColor: theme.gold }]}>
                   <View style={styles.btnContentRow}>
-                    <QuizIcon name="cross" color="#FFF" size={16} />
-                    <ThemedText type="smallBold" style={styles.btnTextWhite}>Lo dudé</ThemedText>
+                    <QuizIcon name="cross" color={theme.text} size={16} />
+                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }}>Lo dudé</Text>
                   </View>
                 </Pressable>
-                <Pressable onPress={() => handleFcAnswer(true)} style={[styles.answerBtn, styles.correctBtn]}>
+                <Pressable onPress={() => handleFcAnswer(true)} style={[styles.answerBtn, { backgroundColor: theme.success }]}>
                   <View style={styles.btnContentRow}>
                     <QuizIcon name="check" color="#FFF" size={16} />
-                    <ThemedText type="smallBold" style={styles.btnTextWhite}>¡Lo sabía!</ThemedText>
+                    <Text style={[styles.btnTextWhite, { fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }]}>¡Lo sabía!</Text>
                   </View>
                 </Pressable>
               </View>
-            ) : (
-              <Pressable onPress={loadNextFcCard} style={[styles.nextCardBtn, { backgroundColor: theme.tint }]}>
-                <View style={styles.btnContentRow}>
-                  <ThemedText type="smallBold" style={{ color: '#FFF' }}>Siguiente Ficha</ThemedText>
-                  <QuizIcon name="arrow" color="#FFF" size={16} />
-                </View>
-              </Pressable>
             )}
           </View>
         </ScrollView>
@@ -284,9 +308,9 @@ export default function FlashcardsScreen() {
   const renderQuizLobby = () => (
     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <ThemedText type="title" style={{ textAlign: 'center', marginBottom: Spacing.four }}>BJCP Quiz</ThemedText>
+        <Text style={{ textAlign: 'center', marginBottom: Spacing.four, fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>BJCP Quiz</Text>
         
-        <ThemedText type="default" style={{ fontWeight: '600', marginBottom: Spacing.two }}>Modo de Estudio:</ThemedText>
+        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Modo de Estudio:</Text>
         <View style={styles.modesContainer}>
           {[
             { id: 'mixed', label: 'Mixto (Todos)', desc: 'Examen simulado integral', icon: 'mixed' },
@@ -298,33 +322,33 @@ export default function FlashcardsScreen() {
             <Pressable 
               key={m.id}
               onPress={() => setQuizMode(m.id as QuizMode)}
-              style={[styles.modeBtn, { borderColor: theme.border }, quizMode === m.id && { borderColor: theme.tint, backgroundColor: 'rgba(47, 93, 115, 0.08)' }]}
+              style={[styles.modeBtn, { borderColor: theme.border }, quizMode === m.id && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }]}
             >
               <View style={styles.modeBtnHeader}>
-                <QuizIcon name={m.icon} color={quizMode === m.id ? theme.tint : theme.text} size={18} />
-                <ThemedText style={{ fontWeight: '700', color: quizMode === m.id ? theme.tint : theme.text }}>{m.label}</ThemedText>
+                <QuizIcon name={m.icon} color={quizMode === m.id ? theme.gold : theme.textSecondary} size={18} />
+                <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 14 }}>{m.label}</Text>
               </View>
-              <ThemedText type="small" themeColor="textSecondary" style={{ marginLeft: 26 }}>{m.desc}</ThemedText>
+              <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.textSecondary, marginLeft: 26 }}>{m.desc}</Text>
             </Pressable>
           ))}
         </View>
 
-        <ThemedText type="default" style={{ fontWeight: '600', marginTop: Spacing.four, marginBottom: Spacing.two }}>Cantidad de Preguntas:</ThemedText>
+        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Cantidad de Preguntas:</Text>
         <View style={styles.countContainer}>
           {[5, 10, 20, 50].map(c => (
             <Pressable
               key={c}
               onPress={() => setQuizCount(c)}
-              style={[styles.countBtn, { borderColor: theme.border }, quizCount === c && { backgroundColor: theme.tint, borderColor: theme.tint }]}
+              style={[styles.countBtn, { borderColor: theme.border }, quizCount === c && { backgroundColor: theme.gold, borderColor: theme.gold }]}
             >
-              <ThemedText style={{ color: quizCount === c ? '#FFF' : theme.text, fontWeight: '700' }}>{c}</ThemedText>
+              <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 14 }}>{c}</Text>
             </Pressable>
           ))}
         </View>
 
         <Pressable onPress={startQuiz} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
           <View style={styles.btnContentRow}>
-            <ThemedText style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>Comenzar Quiz</ThemedText>
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Comenzar Quiz</Text>
             <QuizIcon name="arrow" color="#FFF" size={18} />
           </View>
         </Pressable>
@@ -339,25 +363,25 @@ export default function FlashcardsScreen() {
     return (
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.quizHeader}>
-          <ThemedText type="default" style={{ fontWeight: '600', color: theme.textSecondary }}>Pregunta {currentQuestionIndex + 1} / {questions.length}</ThemedText>
+          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Pregunta {currentQuestionIndex + 1} / {questions.length}</Text>
           <View style={styles.streakBadge}>
-            <QuizIcon name="fire" color={streak > 0 ? '#C45B0E' : theme.textSecondary} size={16} />
-            <ThemedText type="default" style={{ fontWeight: '600', color: streak > 0 ? '#C45B0E' : theme.textSecondary }}>Racha: {streak}</ThemedText>
+            <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
+            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Racha: {streak}</Text>
           </View>
         </View>
         
-        <View style={[styles.progressBarTrack, { backgroundColor: theme.backgroundElement, marginBottom: Spacing.four, borderColor: theme.border, borderWidth: 1 }]}>
-          <View style={[styles.progressBarFill, { backgroundColor: theme.tint, width: `${((currentQuestionIndex) / questions.length) * 100}%` }]} />
+        <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)', marginBottom: Spacing.four }]}>
+          <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${((currentQuestionIndex) / questions.length) * 100}%` }]} />
         </View>
 
         <ThemedView style={[styles.quizQuestionCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           <View style={styles.quizCategoryHeader}>
-            <QuizIcon name={q.category} color={theme.tint} size={16} />
-            <ThemedText type="smallBold" style={{ color: theme.tint, textTransform: 'uppercase' }}>
+            <QuizIcon name={q.category} color={theme.gold} size={16} />
+            <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
               {q.category === 'mixed' ? 'General' : q.category}
-            </ThemedText>
+            </Text>
           </View>
-          <ThemedText style={{ fontSize: 18, lineHeight: 26, fontWeight: '600' }}>{q.question}</ThemedText>
+          <Text style={{ fontSize: 16, lineHeight: 24, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>{q.question}</Text>
         </ThemedView>
 
         <View style={styles.optionsContainer}>
@@ -377,9 +401,9 @@ export default function FlashcardsScreen() {
                 textColor = '#FFF';
                 iconName = 'check';
               } else if (isSelected && !isCorrectOption) {
-                bgColor = '#8C2E0B'; // Muted Red
-                borderColor = '#8C2E0B';
-                textColor = '#FFF';
+                bgColor = theme.gold; // Brand Gold for incorrect selection
+                borderColor = theme.gold;
+                textColor = theme.text;
                 iconName = 'cross';
               } else {
                 // Dim other unselected incorrect options
@@ -397,22 +421,22 @@ export default function FlashcardsScreen() {
                 onPress={() => handleQuizAnswer(opt)}
                 style={[styles.optionBtn, { backgroundColor: bgColor, borderColor }]}
               >
-                <ThemedText style={{ color: textColor, fontSize: 15, fontWeight: '500', flex: 1 }}>{opt}</ThemedText>
-                {iconName !== '' && <QuizIcon name={iconName} color="#FFF" size={18} />}
+                <Text style={{ color: textColor, fontSize: 14, fontWeight: '600', fontFamily: Fonts.manropeBold, flex: 1 }}>{opt}</Text>
+                {iconName !== '' && <QuizIcon name={iconName} color={bgColor === theme.success ? '#FFF' : theme.text} size={18} />}
               </Pressable>
             );
           })}
         </View>
 
         {hasAnswered && (
-          <View style={[styles.explanationContainer, { backgroundColor: 'rgba(47, 93, 115, 0.08)', borderColor: theme.tint }]}>
-            <ThemedText style={{ fontSize: 14, fontStyle: 'italic', color: theme.text, lineHeight: 22 }}>{q.explanation}</ThemedText>
-            <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.tint }]}>
+          <View style={[styles.explanationContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>{q.explanation}</Text>
+            <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.gold }]}>
               <View style={styles.btnContentRow}>
-                <ThemedText style={{ color: '#FFF', fontWeight: '700' }}>
+                <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
                   {currentQuestionIndex + 1 === questions.length ? 'Ver Resultados' : 'Siguiente'}
-                </ThemedText>
-                <QuizIcon name={currentQuestionIndex + 1 === questions.length ? 'award' : 'arrow'} color="#FFF" size={16} />
+                </Text>
+                <QuizIcon name={currentQuestionIndex + 1 === questions.length ? 'award' : 'arrow'} color={theme.text} size={16} />
               </View>
             </Pressable>
           </View>
@@ -428,25 +452,25 @@ export default function FlashcardsScreen() {
         <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border, alignItems: 'center', paddingVertical: Spacing.six }]}>
           <QuizIcon name="award" color={percentage >= 80 ? theme.success : theme.tint} size={64} />
           
-          <ThemedText type="title" style={{ marginVertical: Spacing.four }}>Resultados Finales</ThemedText>
+          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>Resultados Finales</Text>
           
-          <ThemedText style={{ fontSize: 56, fontWeight: '900', color: percentage >= 80 ? theme.success : theme.tint, marginVertical: Spacing.two }}>
+          <Text style={{ fontSize: 48, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: percentage >= 80 ? theme.success : theme.tint, marginVertical: Spacing.two }}>
             {percentage}%
-          </ThemedText>
+          </Text>
           
-          <ThemedText type="subtitle" style={{ color: theme.textSecondary, marginBottom: Spacing.four }}>
+          <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.textSecondary, marginBottom: Spacing.four }}>
             {quizScore} de {questions.length} respuestas correctas
-          </ThemedText>
+          </Text>
           
-          <View style={styles.finalStreakBadge}>
-            <QuizIcon name="fire" color="#C45B0E" size={24} />
-            <ThemedText type="default" style={{ fontWeight: '700', fontSize: 18 }}>
+          <View style={[styles.finalStreakBadge, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
+            <QuizIcon name="fire" color={theme.gold} size={24} />
+            <Text style={{ fontWeight: '700', fontSize: 16, color: theme.text, fontFamily: Fonts.manropeBold }}>
               Racha Máxima: {maxStreak}
-            </ThemedText>
+            </Text>
           </View>
 
           <Pressable onPress={() => setQuizState('lobby')} style={[styles.startQuizBtn, { backgroundColor: theme.tint, width: '100%', marginTop: Spacing.five }]}>
-            <ThemedText style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>Volver al Menú</ThemedText>
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Volver al Menú</Text>
           </Pressable>
         </ThemedView>
       </ScrollView>
@@ -454,7 +478,7 @@ export default function FlashcardsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView type="tint" style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {renderToggle()}
         {studyMode === 'flashcards' && renderFlashcards()}
@@ -467,66 +491,64 @@ export default function FlashcardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', flexDirection: 'row' },
+  container: { flex: 1, justifyContent: 'center', flexDirection: 'row', backgroundColor: '#2F5D73' },
   safeArea: { flex: 1, maxWidth: MaxContentWidth },
-  toggleContainer: { flexDirection: 'row', padding: Spacing.four, gap: Spacing.two },
-  toggleBtn: { flex: 1, paddingVertical: Spacing.two, alignItems: 'center', borderRadius: Spacing.two, borderWidth: 1, borderColor: 'rgba(128,128,128,0.2)' },
+  toggleContainer: { flexDirection: 'row', padding: Spacing.three, gap: Spacing.two },
+  toggleBtn: { flex: 1, paddingVertical: Spacing.three, alignItems: 'center', borderRadius: Spacing.two, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.2)' },
   
   // Flashcards
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.four },
-  title: { fontSize: 24, fontWeight: '800' },
-  progressWrapper: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.two },
-  progressBarTrack: { height: 8, borderRadius: 4, width: '100%', overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: 4 },
-  scrollContent: { paddingHorizontal: Spacing.four, paddingBottom: BottomTabInset + Spacing.six, gap: Spacing.four },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.three, marginBottom: Spacing.two },
+  title: { fontSize: 22, fontWeight: '900', color: '#FFFFFF', fontFamily: Fonts.spaceGroteskBold },
+  progressWrapper: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three },
+  progressBarTrack: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+  scrollContent: { paddingHorizontal: Spacing.three, paddingBottom: BottomTabInset + Spacing.six, gap: Spacing.three },
   
-  cardContainer: { borderRadius: Spacing.four, minHeight: 380, elevation: 4, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+  cardContainer: { borderRadius: Spacing.three, minHeight: 360, elevation: 4, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
   cardPressed: { transform: [{ scale: 0.99 }] },
   cardColorStripe: { height: 8, width: '100%' },
-  cardSide: { flex: 1, padding: Spacing.four },
+  cardSide: { flex: 1, padding: Spacing.three },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.three },
-  cardBadge: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  backIdBadge: { fontSize: 12, fontWeight: '900', paddingHorizontal: Spacing.two, borderRadius: Spacing.one },
-  cardSectionLabel: { fontSize: 11, color: 'rgba(128,128,128,0.7)', marginBottom: Spacing.one, textTransform: 'uppercase' },
+  cardBadge: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, fontFamily: Fonts.spaceGroteskBold },
+  backIdBadge: { fontSize: 12, fontWeight: '900', paddingHorizontal: Spacing.two, borderRadius: Spacing.one, fontFamily: Fonts.spaceGroteskBold },
+  cardSectionLabel: { fontSize: 10, color: 'rgba(128,128,128,0.7)', marginBottom: Spacing.one, textTransform: 'uppercase', fontFamily: Fonts.manropeBold, letterSpacing: 1 },
   questionSection: { flex: 1, justifyContent: 'center' },
-  cardImpression: { fontSize: 15, lineHeight: 22 },
+  cardImpression: { fontSize: 14, lineHeight: 20, fontFamily: Fonts.inter, color: '#2A313C' },
   vitalCluesContainer: { marginTop: Spacing.three },
-  cluesRow: { flexDirection: 'row', gap: Spacing.two },
-  clueBadge: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.three, borderRadius: Spacing.two },
-  clueText: { fontSize: 12 },
+  cluesRow: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
+  clueBadge: { paddingVertical: Spacing.one, paddingHorizontal: Spacing.two, borderRadius: Spacing.two },
+  clueText: { fontSize: 11, fontFamily: Fonts.ibmPlexBold, color: '#2A313C' },
   answerHeader: { alignItems: 'center', marginVertical: Spacing.two },
-  answerStyleName: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  answerStyleName: { fontSize: 20, fontWeight: '800', textAlign: 'center', fontFamily: Fonts.spaceGroteskBold, color: '#0A0C10' },
   answerSection: { marginVertical: Spacing.two },
   examplesContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   exampleItem: { paddingVertical: Spacing.one, paddingHorizontal: Spacing.two, borderRadius: Spacing.one, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  controlsContainer: { gap: Spacing.three, alignItems: 'center' },
-  answerButtonsRow: { flexDirection: 'row', width: '100%', gap: Spacing.three },
-  answerBtn: { flex: 1, borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
-  incorrectBtn: { backgroundColor: '#8C2E0B' },
-  correctBtn: { backgroundColor: '#2D6A4F' },
-  btnTextWhite: { color: '#FDFBF7' },
-  nextCardBtn: { width: '100%', borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
+  controlsContainer: { gap: Spacing.two, alignItems: 'center', marginTop: Spacing.two },
+  answerButtonsRow: { flexDirection: 'row', width: '100%', gap: Spacing.two },
+  answerBtn: { flex: 1, borderRadius: Spacing.two, paddingVertical: Spacing.three, alignItems: 'center' },
+  btnTextWhite: { color: '#FFFFFF', fontFamily: Fonts.manropeBold },
+  nextCardBtn: { width: '100%', borderRadius: Spacing.two, paddingVertical: Spacing.three, alignItems: 'center' },
   btnContentRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, justifyContent: 'center' },
 
   // Quiz Lobby
-  lobbyCard: { padding: Spacing.four, borderRadius: Spacing.three, borderWidth: 1 },
+  lobbyCard: { padding: Spacing.three, borderRadius: Spacing.three, borderWidth: 1.5 },
   modesContainer: { gap: Spacing.two },
-  modeBtn: { padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1 },
+  modeBtn: { padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1.5 },
   modeBtnHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.half },
   countContainer: { flexDirection: 'row', gap: Spacing.two },
-  countBtn: { flex: 1, paddingVertical: Spacing.two, alignItems: 'center', borderRadius: Spacing.two, borderWidth: 1 },
-  startQuizBtn: { marginTop: Spacing.five, paddingVertical: Spacing.three, borderRadius: Spacing.two, alignItems: 'center' },
+  countBtn: { flex: 1, paddingVertical: Spacing.two, alignItems: 'center', borderRadius: Spacing.two, borderWidth: 1.5 },
+  startQuizBtn: { marginTop: Spacing.four, paddingVertical: Spacing.three, borderRadius: Spacing.two, alignItems: 'center' },
 
   // Quiz Playing
   quizHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two },
   streakBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   quizCategoryHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginBottom: Spacing.two },
-  quizQuestionCard: { padding: Spacing.four, borderRadius: Spacing.three, borderWidth: 1, marginBottom: Spacing.four },
+  quizQuestionCard: { padding: Spacing.three, borderRadius: Spacing.three, borderWidth: 1.5, marginBottom: Spacing.three },
   optionsContainer: { gap: Spacing.two },
-  optionBtn: { padding: Spacing.four, borderRadius: Spacing.two, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  explanationContainer: { marginTop: Spacing.four, padding: Spacing.four, borderRadius: Spacing.two, borderWidth: 1 },
-  nextQuizBtn: { marginTop: Spacing.three, paddingVertical: Spacing.three, borderRadius: Spacing.two, alignItems: 'center' },
+  optionBtn: { paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1.5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  explanationContainer: { marginTop: Spacing.three, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1.5 },
+  nextQuizBtn: { marginTop: Spacing.two, paddingVertical: Spacing.three, borderRadius: Spacing.two, alignItems: 'center' },
   
   // Results
-  finalStreakBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: 'rgba(196, 91, 14, 0.1)', paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, borderRadius: Spacing.two },
+  finalStreakBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, borderRadius: Spacing.two },
 });

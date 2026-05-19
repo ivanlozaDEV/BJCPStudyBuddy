@@ -26,6 +26,7 @@ import {
 } from '@/data/bjcp2021';
 import { fuzzyMatch } from '@/utils/fuzzy';
 import { GLOSSARY_DATA, GlossaryTerm, TAG_DEFINITIONS_DATA, TagDefinition } from '@/data/glossary';
+import { OFF_FLAVORS_DATA, OffFlavor } from '@/data/offflavors';
 
 // SRM Color Mapping Helper for Visual SRM bars
 function getSRMColor(srm: number): string {
@@ -84,6 +85,10 @@ export default function ExploreScreen() {
   // Glossary Modal States
   const [selectedGlossaryTerm, setSelectedGlossaryTerm] = useState<GlossaryTerm | null>(null);
   const [glossaryModalVisible, setGlossaryModalVisible] = useState(false);
+
+  // Off-Flavor Modal States
+  const [selectedOffFlavor, setSelectedOffFlavor] = useState<OffFlavor | null>(null);
+  const [offFlavorModalVisible, setOffFlavorModalVisible] = useState(false);
 
   // Sync Search parameter from HomeScreen (Style of the Day)
   useEffect(() => {
@@ -192,6 +197,18 @@ export default function ExploreScreen() {
     setGlossaryModalVisible(true);
   };
 
+  const handleOffFlavorLinkPress = (offFlavor: OffFlavor) => {
+    setSelectedOffFlavor(offFlavor);
+    setOffFlavorModalVisible(true);
+  };
+
+  const getAssociatedOffFlavor = (termId: string): OffFlavor | undefined => {
+    if (termId === 'esters') {
+      return OFF_FLAVORS_DATA.find(off => off.id === 'estery');
+    }
+    return OFF_FLAVORS_DATA.find(off => off.id === termId);
+  };
+
   const renderTextWithGlossaryLinks = (text: string) => {
     if (!text) return null;
 
@@ -256,10 +273,43 @@ export default function ExploreScreen() {
     });
 
     // Flatten patterns into a single sorted list
-    const flatPatterns: { patternStr: string; term: GlossaryTerm }[] = [];
+    interface FlatPattern {
+      patternStr: string;
+      term: GlossaryTerm;
+      type: 'glossary' | 'offflavor';
+      offFlavor?: OffFlavor;
+    }
+
+    const flatPatterns: FlatPattern[] = [];
     langPatterns.forEach(({ term, patterns }) => {
       patterns.forEach(p => {
-        flatPatterns.push({ patternStr: p, term });
+        flatPatterns.push({ patternStr: p, term, type: 'glossary' });
+      });
+    });
+
+    // 3. Add pure off-flavors (not matched by glossary/tag definitions to avoid duplicates)
+    OFF_FLAVORS_DATA.forEach(off => {
+      const hasGlossaryMatch = GLOSSARY_DATA.some(g => g.id === off.id) || TAG_DEFINITIONS_DATA.some(t => t.tag === off.id);
+      if (hasGlossaryMatch) {
+        return; // Skip adding patterns, since it will be matched by the glossary/tag patterns
+      }
+
+      const patterns = language === 'es' ? (off.patterns_es || []) : (off.patterns_en || []);
+      patterns.forEach(p => {
+        flatPatterns.push({
+          patternStr: p,
+          term: {
+            id: off.id,
+            name_es: off.name_es,
+            name_en: off.name_en,
+            definition_es: off.sensation_es,
+            definition_en: off.sensation_en,
+            patterns_es: [],
+            patterns_en: []
+          },
+          type: 'offflavor',
+          offFlavor: off
+        });
       });
     });
 
@@ -270,13 +320,20 @@ export default function ExploreScreen() {
       return <Text style={styles.detailText}>{text}</Text>;
     }
 
+    const getEscapedPattern = (pattern: string): string => {
+      const placeholder = '___WORDBOUNDARY___';
+      const withPlaceholder = pattern.replace(/\\b/g, placeholder);
+      const escaped = withPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return escaped.replace(new RegExp(placeholder, 'g'), '\\b');
+    };
+
     // Build the dynamic regex alternation with word boundaries using non-capturing groups
     const regexParts = flatPatterns.map(p => {
-      const escaped = p.patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      if (escaped.includes('\\b')) {
-        return `(?:${escaped})`;
+      const finalPattern = getEscapedPattern(p.patternStr);
+      if (finalPattern.includes('\\b')) {
+        return `(?:${finalPattern})`;
       }
-      return `\\b(?:${escaped})\\b`;
+      return `\\b(?:${finalPattern})\\b`;
     });
 
     const combinedRegex = new RegExp(`(${regexParts.join('|')})`, 'gi');
@@ -294,27 +351,45 @@ export default function ExploreScreen() {
           if (index % 2 !== 0 && part) {
             // Find which term matched this part
             const matchedPattern = flatPatterns.find(p => {
-              const escaped = p.patternStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const pRegex = new RegExp(escaped.includes('\\b') ? escaped : `^${escaped}$`, 'i');
+              const finalPattern = getEscapedPattern(p.patternStr);
+              const pRegex = new RegExp(finalPattern.includes('\\b') ? finalPattern : `^${finalPattern}$`, 'i');
               return pRegex.test(part);
             });
 
             if (matchedPattern) {
-              const term = matchedPattern.term;
-              return (
-                <Text
-                  key={index}
-                  onPress={() => handleGlossaryLinkPress(term)}
-                  style={{
-                    color: '#0A0C10', // Leave the letter black
-                    textDecorationLine: 'underline',
-                    textDecorationColor: '#0A0C10', // Normal black underline
-                    ...({ outlineStyle: 'none' } as any), // Remove web focus outline ring
-                  }}
-                >
-                  {part}
-                </Text>
-              );
+              if (matchedPattern.type === 'offflavor' && matchedPattern.offFlavor) {
+                const off = matchedPattern.offFlavor;
+                return (
+                  <Text
+                    key={index}
+                    onPress={() => handleOffFlavorLinkPress(off)}
+                    style={{
+                      color: '#0A0C10', // Leave the letter black
+                      textDecorationLine: 'underline',
+                      textDecorationColor: '#0A0C10', // Normal black underline
+                      ...({ outlineStyle: 'none' } as any), // Remove web focus outline ring
+                    }}
+                  >
+                    {part}
+                  </Text>
+                );
+              } else {
+                const term = matchedPattern.term;
+                return (
+                  <Text
+                    key={index}
+                    onPress={() => handleGlossaryLinkPress(term)}
+                    style={{
+                      color: '#0A0C10', // Leave the letter black
+                      textDecorationLine: 'underline',
+                      textDecorationColor: '#0A0C10', // Normal black underline
+                      ...({ outlineStyle: 'none' } as any), // Remove web focus outline ring
+                    }}
+                  >
+                    {part}
+                  </Text>
+                );
+              }
             } else {
               return part;
             }
@@ -1071,7 +1146,7 @@ export default function ExploreScreen() {
               styles.glossaryModalContent,
               { 
                 backgroundColor: theme.backgroundElement,
-                borderColor: '#FFD54F', // Shiny beer gold border
+                borderColor: theme.gold,
               }
             ]}
           >
@@ -1090,9 +1165,116 @@ export default function ExploreScreen() {
               </Text>
             </ScrollView>
 
+            {(() => {
+              const associatedOffFlavor = selectedGlossaryTerm ? getAssociatedOffFlavor(selectedGlossaryTerm.id) : undefined;
+              return associatedOffFlavor ? (
+                <Pressable 
+                  style={[styles.glossaryModalButton, { backgroundColor: theme.gold, marginBottom: 8 }]}
+                  onPress={() => {
+                    setGlossaryModalVisible(false);
+                    setSelectedOffFlavor(associatedOffFlavor);
+                    setTimeout(() => {
+                      setOffFlavorModalVisible(true);
+                    }, 150);
+                  }}
+                >
+                  <Text style={[styles.glossaryModalButtonText, { color: '#0A0C10', fontWeight: 'bold' }]}>
+                    {language === 'es' ? 'Ver Detalles del Defecto 🔬' : 'View Off-Flavor Details 🔬'}
+                  </Text>
+                </Pressable>
+              ) : null;
+            })()}
+
             <Pressable 
               style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
               onPress={() => setGlossaryModalVisible(false)}
+            >
+              <Text style={styles.glossaryModalButtonText}>
+                {language === 'es' ? 'Cerrar' : 'Close'}
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Off-Flavor Details Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={offFlavorModalVisible}
+        onRequestClose={() => setOffFlavorModalVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setOffFlavorModalVisible(false)}
+        >
+          <View 
+            style={[
+              styles.offFlavorCard,
+              { 
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.border, // Brand Stainless Steel border for neutral clean framing
+              }
+            ]}
+          >
+            <View style={styles.offFlavorHeader}>
+              <View style={[styles.offFlavorBadge, { backgroundColor: theme.backgroundSelected }]}>
+                <Text style={{ fontSize: 20 }}>🔬</Text>
+              </View>
+              <View style={styles.offFlavorTitleContainer}>
+                <Text style={[styles.offFlavorTitle, { color: theme.text }]}>
+                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.name_es : selectedOffFlavor.name_en) : ''}
+                </Text>
+                <Text style={[styles.offFlavorSubtitle, { color: theme.textSecondary }]}>
+                  {language === 'es' ? 'Defecto de la Cerveza' : 'Beer Off-Flavor'}
+                </Text>
+              </View>
+            </View>
+
+            <ScrollView style={styles.offFlavorBody} showsVerticalScrollIndicator={false}>
+              {/* Section 1: Sensation / Descriptor */}
+              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <View style={styles.offFlavorSectionHeader}>
+                  <Text style={{ fontSize: 16 }}>👅</Text>
+                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                    {language === 'es' ? 'Sensación / Descriptor' : 'Sensation / Descriptor'}
+                  </Text>
+                </View>
+                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.sensation_es : selectedOffFlavor.sensation_en) : ''}
+                </Text>
+              </View>
+
+              {/* Section 2: Causes */}
+              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <View style={styles.offFlavorSectionHeader}>
+                  <Text style={{ fontSize: 16 }}>🔬</Text>
+                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                    {language === 'es' ? 'Causas Posibles' : 'Possible Causes'}
+                  </Text>
+                </View>
+                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.causes_es : selectedOffFlavor.causes_en) : ''}
+                </Text>
+              </View>
+
+              {/* Section 3: Prevention */}
+              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <View style={styles.offFlavorSectionHeader}>
+                  <Text style={{ fontSize: 16 }}>🛡️</Text>
+                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                    {language === 'es' ? 'Cómo Evitarlo / Prevención' : 'How to Prevent / Prevention'}
+                  </Text>
+                </View>
+                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.prevention_es : selectedOffFlavor.prevention_en) : ''}
+                </Text>
+              </View>
+            </ScrollView>
+
+            <Pressable 
+              style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
+              onPress={() => setOffFlavorModalVisible(false)}
             >
               <Text style={styles.glossaryModalButtonText}>
                 {language === 'es' ? 'Cerrar' : 'Close'}
@@ -1783,5 +1965,70 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
     fontFamily: Fonts.spaceGroteskBold,
+  },
+  offFlavorCard: {
+    width: '92%',
+    maxWidth: 420,
+    borderRadius: Spacing.three,
+    borderWidth: 2,
+    padding: Spacing.four,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
+  },
+  offFlavorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.four,
+  },
+  offFlavorBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offFlavorTitleContainer: {
+    flex: 1,
+  },
+  offFlavorTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  offFlavorSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  offFlavorBody: {
+    maxHeight: 350,
+    marginBottom: Spacing.four,
+  },
+  offFlavorSection: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    marginBottom: Spacing.three,
+    borderWidth: 1,
+  },
+  offFlavorSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  offFlavorSectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  offFlavorSectionText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
