@@ -12,6 +12,7 @@ import { IBMPlexSans_400Regular, IBMPlexSans_600SemiBold } from '@expo-google-fo
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LanguageProvider } from '@/context/language-context';
 import { Stack } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -36,12 +37,14 @@ export default function TabLayout() {
   }
 
   return (
-    <LanguageProvider>
-      <ThemeProvider value={DefaultTheme}>
-        <StatusBar style="dark" />
-        <AnimatedSplashOverlay />
-        <Stack screenOptions={{ headerShown: false }} />
-      </ThemeProvider>
-    </LanguageProvider>
+    <SafeAreaProvider>
+      <LanguageProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <StatusBar style="dark" />
+          <AnimatedSplashOverlay />
+          <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />
+        </ThemeProvider>
+      </LanguageProvider>
+    </SafeAreaProvider>
   );
 }

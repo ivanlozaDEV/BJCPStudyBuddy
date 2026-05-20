@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.four,
   },
@@ -158,10 +158,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.three,
     marginBottom: Spacing.five,
-    marginTop: Spacing.three,
+    marginTop: Spacing.four,
   },
   appName: {
     fontSize: 54, // Beautiful giant Hero title
+    lineHeight: 64, // Explicit line height to prevent custom font clipping on iOS
     fontWeight: '900',
     color: '#FFFFFF',
     fontFamily: Fonts.spaceGroteskBold,
