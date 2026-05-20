@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getSRMColor, getSRMContrastColor } from '@/utils/srm';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 import Svg, { Path } from 'react-native-svg';
 import { DetailIcon } from '@/components/detail-icons';
@@ -57,13 +58,13 @@ export default function ExploreScreen() {
   const abvLevels = getAbvLevels(language);
   const ibuLevels = getIbuLevels(language);
 
-  // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  // Search & Filter Persistent State
+  const [searchQuery, setSearchQuery] = usePersistentState('@bjcp_explore_search', '');
+  const [isSearching, setIsSearching] = usePersistentState('@bjcp_explore_is_searching', false);
   
   // Volume Filters: 'all' | 'low' | 'mid' | 'high'
-  const [abvFilter, setAbvFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
-  const [ibuFilter, setIbuFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
+  const [abvFilter, setAbvFilter] = usePersistentState<'all' | 'low' | 'mid' | 'high'>('@bjcp_explore_abv', 'all');
+  const [ibuFilter, setIbuFilter] = usePersistentState<'all' | 'low' | 'mid' | 'high'>('@bjcp_explore_ibu', 'all');
 
   // Detail Modal State
 

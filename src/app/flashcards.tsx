@@ -14,6 +14,7 @@ import { BeerStyle, getBJCPStyles } from '@/data/bjcp2021';
 import { GLOSSARY_DATA, GlossaryTerm } from '@/data/glossary';
 import { OFF_FLAVORS_DATA, OffFlavor } from '@/data/offflavors';
 import { generateQuiz, QuizMode, QuizQuestion } from '@/data/quiz-generator';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 // ==========================================
 // SVG ICONS (Premium Harmonized Style)
@@ -57,7 +58,7 @@ export default function FlashcardsScreen() {
   const router = useRouter();
 
   // Mode Selection
-  const [studyMode, setStudyMode] = useState<StudyMode>('quiz');
+  const [studyMode, setStudyMode] = usePersistentState<StudyMode>('@bjcp_study_mode', 'quiz');
 
   // ==========================================
   // FLASHCARDS STATE
@@ -99,15 +100,15 @@ export default function FlashcardsScreen() {
   // ==========================================
   // QUIZ STATE
   // ==========================================
-  const [quizState, setQuizState] = useState<QuizState>('lobby');
-  const [quizMode, setQuizMode] = useState<QuizMode>('mixed');
-  const [quizCount, setQuizCount] = useState<number>(10);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [quizScore, setQuizScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [maxStreak, setMaxStreak] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [quizState, setQuizState] = usePersistentState<QuizState>('@bjcp_quiz_state', 'lobby');
+  const [quizMode, setQuizMode] = usePersistentState<QuizMode>('@bjcp_quiz_mode', 'mixed');
+  const [quizCount, setQuizCount] = usePersistentState<number>('@bjcp_quiz_count', 10);
+  const [questions, setQuestions] = usePersistentState<QuizQuestion[]>('@bjcp_quiz_questions', []);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = usePersistentState<number>('@bjcp_quiz_index', 0);
+  const [quizScore, setQuizScore] = usePersistentState<number>('@bjcp_quiz_score', 0);
+  const [streak, setStreak] = usePersistentState<number>('@bjcp_quiz_streak', 0);
+  const [maxStreak, setMaxStreak] = usePersistentState<number>('@bjcp_quiz_max_streak', 0);
+  const [selectedOption, setSelectedOption] = usePersistentState<string | null>('@bjcp_quiz_selected', null);
 
   const startNewFlashcardSession = (category = 'all') => {
     let stylesList = getBJCPStyles(language);

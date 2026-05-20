@@ -13,6 +13,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LanguageProvider } from '@/context/language-context';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useLastRoute } from '@/hooks/use-last-route';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -31,6 +32,9 @@ export default function TabLayout() {
     IBMPlexSans_400Regular,
     IBMPlexSans_600SemiBold,
   });
+
+  // Handle automatic route restoration
+  useLastRoute();
 
   if (!loaded && !error) {
     return null;

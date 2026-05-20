@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -43,21 +44,33 @@ export default function ComparatorScreen() {
 
   const params = useLocalSearchParams<{ styleAId?: string; styleBId?: string }>();
 
-  // Selected Beer Styles
+  // Selected Beer Styles IDs Persistent State
+  const [persistedAId, setPersistedAId] = usePersistentState<string | null>('@bjcp_comp_a', null);
+  const [persistedBId, setPersistedBId] = usePersistentState<string | null>('@bjcp_comp_b', null);
+  
+  // Local object states
   const [styleA, setStyleA] = useState<BeerStyle | null>(null);
   const [styleB, setStyleB] = useState<BeerStyle | null>(null);
 
   // Sync route params to pre-load styles
   useEffect(() => {
-    if (params.styleAId && styleA?.id.toLowerCase() !== params.styleAId.toLowerCase()) {
-      const foundA = stylesList.find(s => s.id.toLowerCase() === params.styleAId?.toLowerCase());
-      if (foundA) setStyleA(foundA);
+    const targetAId = params.styleAId || persistedAId;
+    if (targetAId && styleA?.id.toLowerCase() !== targetAId.toLowerCase()) {
+      const foundA = stylesList.find(s => s.id.toLowerCase() === targetAId.toLowerCase());
+      if (foundA) {
+        setStyleA(foundA);
+        setPersistedAId(foundA.id);
+      }
     }
-    if (params.styleBId && styleB?.id.toLowerCase() !== params.styleBId.toLowerCase()) {
-      const foundB = stylesList.find(s => s.id.toLowerCase() === params.styleBId?.toLowerCase());
-      if (foundB) setStyleB(foundB);
+    const targetBId = params.styleBId || persistedBId;
+    if (targetBId && styleB?.id.toLowerCase() !== targetBId.toLowerCase()) {
+      const foundB = stylesList.find(s => s.id.toLowerCase() === targetBId.toLowerCase());
+      if (foundB) {
+        setStyleB(foundB);
+        setPersistedBId(foundB.id);
+      }
     }
-  }, [params.styleAId, params.styleBId, styleA?.id, styleB?.id, language]);
+  }, [params.styleAId, params.styleBId, persistedAId, persistedBId, styleA?.id, styleB?.id, language]);
 
   // Selection Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -65,7 +78,7 @@ export default function ComparatorScreen() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Descriptive comparison active tab
-  const [activeTab, setActiveTab] = useState<'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history' | 'commercialExamples'>('impression');
+  const [activeTab, setActiveTab] = usePersistentState<'impression' | 'aroma' | 'appearance' | 'flavor' | 'mouthfeel' | 'history' | 'commercialExamples'>('@bjcp_comp_tab', 'impression');
 
   // Filtered styles for the picker modal using multi-field fuzzy search
   const filteredStyles = stylesList.filter(s => 
@@ -81,8 +94,10 @@ export default function ComparatorScreen() {
   const selectStyle = (style: BeerStyle) => {
     if (activePicker === 'A') {
       setStyleA(style);
+      setPersistedAId(style.id);
     } else {
       setStyleB(style);
+      setPersistedBId(style.id);
     }
     setModalVisible(false);
     setActivePicker(null);
