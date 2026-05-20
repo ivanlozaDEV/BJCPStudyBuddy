@@ -45,6 +45,7 @@ function getSRMColor(srm: number): string {
 
 type StudyMode = 'flashcards' | 'quiz';
 type QuizState = 'lobby' | 'playing' | 'results';
+type FcState = 'lobby' | 'playing';
 
 export default function FlashcardsScreen() {
   const theme = useTheme();
@@ -56,11 +57,19 @@ export default function FlashcardsScreen() {
   // ==========================================
   // FLASHCARDS STATE
   // ==========================================
+  const [fcState, setFcState] = useState<FcState>('lobby');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentStyle, setCurrentStyle] = useState<BeerStyle | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [fcScore, setFcScore] = useState({ correct: 0, total: 0 });
   const [sessionStyles, setSessionStyles] = useState<BeerStyle[]>([]);
   const [answeredStyles, setAnsweredStyles] = useState<string[]>([]);
+  const [revealedClues, setRevealedClues] = useState({
+    aroma: false,
+    appearance: false,
+    flavor: false,
+    mouthfeel: false,
+  });
 
   // ==========================================
   // QUIZ STATE
@@ -75,18 +84,30 @@ export default function FlashcardsScreen() {
   const [maxStreak, setMaxStreak] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
-  const startNewFlashcardSession = () => {
-    const stylesList = getBJCPStyles(language);
+  const startNewFlashcardSession = (category = 'all') => {
+    let stylesList = getBJCPStyles(language);
+    if (category !== 'all') {
+      stylesList = stylesList.filter(s => s.category === category);
+    }
+    if (stylesList.length === 0) {
+      stylesList = getBJCPStyles(language); // Fallback
+    }
     const shuffled = [...stylesList].sort(() => Math.random() - 0.5);
     setSessionStyles(shuffled);
-    setCurrentStyle(shuffled[0]);
+    setCurrentStyle(shuffled[0] || null);
     setIsFlipped(false);
     setFcScore({ correct: 0, total: 0 });
     setAnsweredStyles([]);
+    setRevealedClues({
+      aroma: false,
+      appearance: false,
+      flavor: false,
+      mouthfeel: false,
+    });
   };
 
   useEffect(() => {
-    startNewFlashcardSession();
+    startNewFlashcardSession(selectedCategory);
   }, [language]);
 
   const handleFlipCard = () => setIsFlipped(!isFlipped);
@@ -106,12 +127,18 @@ export default function FlashcardsScreen() {
   
   const loadNextFcCard = () => {
     setIsFlipped(false);
+    setRevealedClues({
+      aroma: false,
+      appearance: false,
+      flavor: false,
+      mouthfeel: false,
+    });
     const currentIndex = sessionStyles.findIndex(s => s.id === currentStyle?.id);
     if (currentIndex + 1 < sessionStyles.length) {
       setTimeout(() => setCurrentStyle(sessionStyles[currentIndex + 1]), 150);
     } else {
       Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
-      startNewFlashcardSession();
+      setFcState('lobby');
     }
   };
 
@@ -189,15 +216,116 @@ export default function FlashcardsScreen() {
     </View>
   );
 
+  const renderFcLobby = () => {
+    const categories = Array.from(new Set(getBJCPStyles(language).map(s => s.category))).sort((a, b) => {
+      const numA = parseInt(a.match(/^(\d+)/)?.[1] || '0');
+      const numB = parseInt(b.match(/^(\d+)/)?.[1] || '0');
+      return numA - numB;
+    });
+
+    const activePoolCount = selectedCategory === 'all' 
+      ? getBJCPStyles(language).length 
+      : getBJCPStyles(language).filter(s => s.category === selectedCategory).length;
+
+    return (
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <Text style={{ textAlign: 'center', marginBottom: Spacing.three, fontSize: 22, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
+            {language === 'es' ? 'Fichas de Estudio' : 'Study Flashcards'}
+          </Text>
+          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, textAlign: 'center', marginBottom: Spacing.four, lineHeight: 18 }}>
+            {language === 'es' 
+              ? 'Practica el reconocimiento activo de estilos. Intenta adivinar usando la Impresión General y revela pistas de Aroma, Sabor o Aspecto si es necesario.'
+              : 'Practice active recall of beer styles. Try to guess using the Overall Impression and reveal Aroma, Flavor, or Appearance hints as needed.'}
+          </Text>
+
+          <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>
+            {language === 'es' ? 'Seleccionar Categoría:' : 'Select Category:'}
+          </Text>
+          
+          <ScrollView style={{ maxHeight: 220, borderWidth: 1.5, borderColor: theme.border, borderRadius: Spacing.two, padding: Spacing.two, marginBottom: Spacing.three }} nestedScrollEnabled={true}>
+            <Pressable
+              onPress={() => setSelectedCategory('all')}
+              style={[
+                styles.modeBtn, 
+                { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+                selectedCategory === 'all' && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
+              ]}
+            >
+              <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
+                {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
+              </Text>
+            </Pressable>
+            {categories.map((cat, idx) => {
+              const count = getBJCPStyles(language).filter(s => s.category === cat).length;
+              return (
+                <Pressable
+                  key={idx}
+                  onPress={() => setSelectedCategory(cat)}
+                  style={[
+                    styles.modeBtn, 
+                    { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+                    selectedCategory === cat && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
+                  ]}
+                >
+                  <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
+                    {cat.replace(/^\d+\.\s+/, '')} ({count})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: Spacing.three }}>
+            <View style={{ backgroundColor: theme.background, paddingVertical: Spacing.one, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border }}>
+              <Text style={{ fontFamily: Fonts.manropeBold, fontSize: 12, color: theme.textSecondary }}>
+                {language === 'es' ? 'Fichas en el grupo:' : 'Flashcards in pool:'} <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{activePoolCount}</Text>
+              </Text>
+            </View>
+          </View>
+
+          <Pressable 
+            onPress={() => {
+              startNewFlashcardSession(selectedCategory);
+              setFcState('playing');
+            }} 
+            style={[styles.startQuizBtn, { backgroundColor: theme.tint, marginTop: 0 }]}
+          >
+            <View style={styles.btnContentRow}>
+              <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
+                {language === 'es' ? 'Comenzar Estudio' : 'Start Study'}
+              </Text>
+              <QuizIcon name="arrow" color="#FFF" size={18} />
+            </View>
+          </Pressable>
+        </ThemedView>
+      </ScrollView>
+    );
+  };
+
   const renderFlashcards = () => {
+    if (fcState === 'lobby') {
+      return renderFcLobby();
+    }
+
     if (!currentStyle) return null;
-    const cardSrmColor = getSRMColor((currentStyle.srmMin + currentStyle.srmMax) / 2);
     const isCardAnswered = answeredStyles.includes(currentStyle.id);
 
     return (
       <>
         <View style={styles.header}>
-          <Text style={styles.title}>Estudio Libre</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+            <Pressable 
+              onPress={() => setFcState('lobby')}
+              style={({ pressed }) => [
+                { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.12)' },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' }}>←</Text>
+            </Pressable>
+            <Text style={styles.title}>{language === 'es' ? 'Estudio' : 'Study'}</Text>
+          </View>
           <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
             Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{answeredStyles.length}</Text>/{sessionStyles.length}
           </Text>
@@ -226,18 +354,94 @@ export default function FlashcardsScreen() {
                   <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
                   <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
                 </View>
-                <View style={styles.questionSection}>
-                  <Text style={styles.cardSectionLabel}>Impresión General:</Text>
-                  <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
-                </View>
-                <View style={styles.vitalCluesContainer}>
-                  <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
-                  <View style={styles.cluesRow}>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
-                    <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</Text></View>
+                
+                <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+                  <View style={styles.questionSection}>
+                    <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+                    <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
                   </View>
-                </View>
+                  
+                  <View style={styles.vitalCluesContainer}>
+                    <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
+                    <View style={styles.cluesRow}>
+                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
+                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
+                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</Text></View>
+                    </View>
+                  </View>
+
+                  <View style={{ marginTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }}>
+                    <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
+                    
+                    {/* Aroma Hint */}
+                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+                      {revealedClues.aroma ? (
+                        <View>
+                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aroma:</Text>
+                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.aroma}</Text>
+                        </View>
+                      ) : (
+                        <Pressable 
+                          onPress={() => setRevealedClues(prev => ({ ...prev, aroma: true }))}
+                          style={{ paddingVertical: 4 }}
+                        >
+                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aroma' : 'Reveal Aroma'}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    {/* Aspecto Hint */}
+                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+                      {revealedClues.appearance ? (
+                        <View>
+                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aspecto:</Text>
+                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.appearance}</Text>
+                        </View>
+                      ) : (
+                        <Pressable 
+                          onPress={() => setRevealedClues(prev => ({ ...prev, appearance: true }))}
+                          style={{ paddingVertical: 4 }}
+                        >
+                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aspecto' : 'Reveal Appearance'}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    {/* Sabor Hint */}
+                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+                      {revealedClues.flavor ? (
+                        <View>
+                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sabor:</Text>
+                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.flavor}</Text>
+                        </View>
+                      ) : (
+                        <Pressable 
+                          onPress={() => setRevealedClues(prev => ({ ...prev, flavor: true }))}
+                          style={{ paddingVertical: 4 }}
+                        >
+                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sabor' : 'Reveal Flavor'}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    {/* Sensación en Boca Hint */}
+                    <View style={{ paddingBottom: Spacing.one }}>
+                      {revealedClues.mouthfeel ? (
+                        <View>
+                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación en Boca:</Text>
+                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.mouthfeel}</Text>
+                        </View>
+                      ) : (
+                        <Pressable 
+                          onPress={() => setRevealedClues(prev => ({ ...prev, mouthfeel: true }))}
+                          style={{ paddingVertical: 4 }}
+                        >
+                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sensación en Boca' : 'Reveal Mouthfeel'}</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                </ScrollView>
               </View>
             ) : (
               <View style={styles.cardSide}>
@@ -245,21 +449,90 @@ export default function FlashcardsScreen() {
                   <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
                   <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
                 </View>
-                <View style={styles.answerHeader}>
-                  <Text style={styles.answerStyleName}>{currentStyle.name}</Text>
-                  <Text style={{ fontSize: 13, fontFamily: Fonts.spaceGrotesk, color: theme.textSecondary }}>{currentStyle.category}</Text>
-                </View>
-                <View style={styles.answerSection}>
-                  <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
-                  <View style={styles.examplesContainer}>
-                    {currentStyle.commercialExamples.map((ex, i) => (
-                      <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
-                        <QuizIcon name="styles" color={theme.textSecondary} size={12} />
-                        <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.text }}>{ex}</Text>
-                      </View>
-                    ))}
+                
+                <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+                  <View style={styles.answerHeader}>
+                    <Text style={styles.answerStyleName}>{currentStyle.name}</Text>
+                    <Text style={{ fontSize: 13, fontFamily: Fonts.spaceGrotesk, color: theme.textSecondary, textAlign: 'center' }}>{currentStyle.category}</Text>
                   </View>
-                </View>
+
+                  <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
+                    {/* Impresión General */}
+                    <View>
+                      <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+                      <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.overallImpression}</Text>
+                    </View>
+
+                    {/* Aroma */}
+                    {currentStyle.aroma ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Aroma:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.aroma}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Aspecto */}
+                    {currentStyle.appearance ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Aspecto:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.appearance}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Sabor */}
+                    {currentStyle.flavor ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Sabor:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.flavor}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Sensación en Boca */}
+                    {currentStyle.mouthfeel ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Sensación en Boca:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.mouthfeel}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Comparación de Estilo */}
+                    {currentStyle.comparison ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Comparación de Estilo:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.comparison}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Historia */}
+                    {currentStyle.history ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Historia:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.history}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Ingredientes */}
+                    {currentStyle.ingredients ? (
+                      <View>
+                        <Text style={styles.cardSectionLabel}>Ingredientes Característicos:</Text>
+                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.ingredients}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Ejemplos Comerciales */}
+                    <View style={{ marginBottom: Spacing.three }}>
+                      <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
+                      <View style={styles.examplesContainer}>
+                        {currentStyle.commercialExamples.map((ex, i) => (
+                          <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
+                            <QuizIcon name="styles" color={theme.textSecondary} size={12} />
+                            <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.text }}>{ex}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
               </View>
             )}
           </Pressable>
