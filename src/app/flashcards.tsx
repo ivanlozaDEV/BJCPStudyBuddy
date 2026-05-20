@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { recordAnswer, getHistory, sortByDifficulty, clearHistory } from '@/hooks/use-flashcard-history';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -96,6 +97,8 @@ export default function FlashcardsScreen() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [fcScore, setFcScore] = useState({ correct: 0, total: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
+  // History displayed in the lobby (reloaded when mode changes)
+  const [lobbyHistory, setLobbyHistory] = useState<Record<string, { correct: number; incorrect: number; lastSeen: number }>>({});
 
   // ==========================================
   // QUIZ STATE
@@ -110,7 +113,7 @@ export default function FlashcardsScreen() {
   const [maxStreak, setMaxStreak] = usePersistentState<number>('@bjcp_quiz_max_streak', 0);
   const [selectedOption, setSelectedOption] = usePersistentState<string | null>('@bjcp_quiz_selected', null);
 
-  const startNewFlashcardSession = (category = 'all') => {
+  const startNewFlashcardSession = async (category = 'all') => {
     let stylesList = getBJCPStyles(language);
     if (category !== 'all') {
       stylesList = stylesList.filter(s => s.category === category);
@@ -118,9 +121,12 @@ export default function FlashcardsScreen() {
     if (stylesList.length === 0) {
       stylesList = getBJCPStyles(language); // Fallback
     }
-    const shuffled = [...stylesList].sort(() => Math.random() - 0.5);
-    setSessionStyles(shuffled);
-    setCurrentStyle(shuffled[0] || null);
+    // Sort hardest cards first, then shuffle unseen
+    const history = await getHistory('styles');
+    const sortedIds = sortByDifficulty(stylesList.map(s => s.id), history);
+    const sorted = sortedIds.map(id => stylesList.find(s => s.id === id)!).filter(Boolean);
+    setSessionStyles(sorted);
+    setCurrentStyle(sorted[0] || null);
     setIsFlipped(false);
     setFcScore({ correct: 0, total: 0 });
     setAnsweredStyles([]);
@@ -132,19 +138,23 @@ export default function FlashcardsScreen() {
     });
   };
 
-  const startGlossarySession = () => {
-    const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
-    setSessionGlossary(shuffled);
-    setCurrentGlossary(shuffled[0] || null);
+  const startGlossarySession = async () => {
+    const history = await getHistory('glossary');
+    const sortedIds = sortByDifficulty(GLOSSARY_DATA.map(g => g.id), history);
+    const sorted = sortedIds.map(id => GLOSSARY_DATA.find(g => g.id === id)!).filter(Boolean);
+    setSessionGlossary(sorted);
+    setCurrentGlossary(sorted[0] || null);
     setIsFlipped(false);
     setFcScore({ correct: 0, total: 0 });
     setAnsweredGlossary([]);
   };
 
-  const startOffFlavorsSession = () => {
-    const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
-    setSessionOffFlavors(shuffled);
-    setCurrentOffFlavor(shuffled[0] || null);
+  const startOffFlavorsSession = async () => {
+    const history = await getHistory('offflavors');
+    const sortedIds = sortByDifficulty(OFF_FLAVORS_DATA.map(o => o.id), history);
+    const sorted = sortedIds.map(id => OFF_FLAVORS_DATA.find(o => o.id === id)!).filter(Boolean);
+    setSessionOffFlavors(sorted);
+    setCurrentOffFlavor(sorted[0] || null);
     setIsFlipped(false);
     setFcScore({ correct: 0, total: 0 });
     setAnsweredOffFlavors([]);
@@ -323,39 +333,59 @@ export default function FlashcardsScreen() {
     });
   }, [language]);
 
-  const handleCategorySelect = (category: string) => {
+  // Load lobby history whenever study mode changes
+  useEffect(() => {
+    const type = fcStudyMode === 'styles' ? 'styles' : fcStudyMode === 'glossary' ? 'glossary' : 'offflavors';
+    getHistory(type).then(setLobbyHistory);
+  }, [fcStudyMode, fcState]); // reload when returning to lobby so badges reflect latest answers
+
+  const handleCategorySelect = async (category: string) => {
     setSelectedCategory(category);
     const allStyles = getBJCPStyles(language);
     const categoryStyles = category === 'all' ? allStyles : allStyles.filter(s => s.category === category);
-    const shuffled = [...categoryStyles].sort(() => Math.random() - 0.5);
-    setSessionStyles(shuffled);
+    const history = await getHistory('styles');
+    const sortedIds = sortByDifficulty(categoryStyles.map(s => s.id), history);
+    const sorted = sortedIds.map(id => categoryStyles.find(s => s.id === id)!).filter(Boolean);
+    setSessionStyles(sorted);
 
     const categoryAnswered = answeredStyles.filter(id => categoryStyles.some(s => s.id === id));
-    const firstUnanswered = shuffled.find(s => !categoryAnswered.includes(s.id)) || shuffled[0] || null;
+    const firstUnanswered = sorted.find(s => !categoryAnswered.includes(s.id)) || sorted[0] || null;
     setCurrentStyle(firstUnanswered);
   };
 
-  const handleResetProgress = () => {
+  const handleResetProgress = async () => {
     if (fcStudyMode === 'styles') {
       const allStyles = getBJCPStyles(language);
       const categoryStyles = selectedCategory === 'all' ? allStyles : allStyles.filter(s => s.category === selectedCategory);
       const targetIds = categoryStyles.map(s => s.id);
-      
       setAnsweredStyles(prev => prev.filter(id => !targetIds.includes(id)));
-      
-      const shuffled = [...categoryStyles].sort(() => Math.random() - 0.5);
-      setSessionStyles(shuffled);
-      setCurrentStyle(shuffled[0] || null);
+      await clearHistory('styles', targetIds);
+      const history = await getHistory('styles');
+      const sortedIds = sortByDifficulty(targetIds, history);
+      const sorted = sortedIds.map(id => categoryStyles.find(s => s.id === id)!).filter(Boolean);
+      setSessionStyles(sorted);
+      setCurrentStyle(sorted[0] || null);
+      setLobbyHistory(history);
     } else if (fcStudyMode === 'glossary') {
       setAnsweredGlossary([]);
-      const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
-      setSessionGlossary(shuffled);
-      setCurrentGlossary(shuffled[0] || null);
+      const ids = GLOSSARY_DATA.map(g => g.id);
+      await clearHistory('glossary', ids);
+      const history = await getHistory('glossary');
+      const sortedIds = sortByDifficulty(ids, history);
+      const sorted = sortedIds.map(id => GLOSSARY_DATA.find(g => g.id === id)!).filter(Boolean);
+      setSessionGlossary(sorted);
+      setCurrentGlossary(sorted[0] || null);
+      setLobbyHistory(history);
     } else {
       setAnsweredOffFlavors([]);
-      const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
-      setSessionOffFlavors(shuffled);
-      setCurrentOffFlavor(shuffled[0] || null);
+      const ids = OFF_FLAVORS_DATA.map(o => o.id);
+      await clearHistory('offflavors', ids);
+      const history = await getHistory('offflavors');
+      const sortedIds = sortByDifficulty(ids, history);
+      const sorted = sortedIds.map(id => OFF_FLAVORS_DATA.find(o => o.id === id)!).filter(Boolean);
+      setSessionOffFlavors(sorted);
+      setCurrentOffFlavor(sorted[0] || null);
+      setLobbyHistory(history);
     }
     setFcScore({ correct: 0, total: 0 });
     setIsFlipped(false);
@@ -370,6 +400,7 @@ export default function FlashcardsScreen() {
         loadNextFcCard();
         return;
       }
+      recordAnswer('styles', currentStyle.id, knewIt);
       setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
       setAnsweredStyles(prev => [...prev, currentStyle.id]);
     } else if (fcStudyMode === 'glossary') {
@@ -378,6 +409,7 @@ export default function FlashcardsScreen() {
         loadNextFcCard();
         return;
       }
+      recordAnswer('glossary', currentGlossary.id, knewIt);
       setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
       setAnsweredGlossary(prev => [...prev, currentGlossary.id]);
     } else {
@@ -386,6 +418,7 @@ export default function FlashcardsScreen() {
         loadNextFcCard();
         return;
       }
+      recordAnswer('offflavors', currentOffFlavor.id, knewIt);
       setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
       setAnsweredOffFlavors(prev => [...prev, currentOffFlavor.id]);
     }
@@ -579,6 +612,11 @@ export default function FlashcardsScreen() {
       return numA - numB;
     });
 
+    // History for current mode (loaded into state on mount)
+    const historyKey = fcStudyMode === 'styles' ? '@bjcp_fc_history_styles'
+      : fcStudyMode === 'glossary' ? '@bjcp_fc_history_glossary'
+      : '@bjcp_fc_history_offflavors';
+
     let activePoolCount = 0;
     if (fcStudyMode === 'styles') {
       activePoolCount = selectedCategory === 'all' 
@@ -603,6 +641,22 @@ export default function FlashcardsScreen() {
       totalCount = OFF_FLAVORS_DATA.length;
       progressCount = answeredOffFlavors.length;
     }
+
+    // Helper: count SEEN cards only.
+    // ✓ known  = seen cards where correct > incorrect
+    // ~ unsure = seen cards where incorrect >= correct
+    // Unseen cards (no history) are NOT counted → both badges show 0 before any study.
+    const getHistoryStats = (ids: string[]) => {
+      let known = 0;
+      let unsure = 0;
+      ids.forEach(id => {
+        const s = lobbyHistory[id];
+        if (!s || (s.correct + s.incorrect) === 0) return; // unseen → skip
+        if (s.correct > s.incorrect) known++;
+        else unsure++;
+      });
+      return { correct: known, incorrect: unsure };
+    };
 
     return (
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -649,37 +703,62 @@ export default function FlashcardsScreen() {
                 <Pressable
                   onPress={() => handleCategorySelect('all')}
                   style={[
-                    styles.modeBtn, 
-                    { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+                    styles.modeBtn,
+                    { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one },
                     selectedCategory === 'all' && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
                   ]}
                 >
-                  <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
-                    {answeredStyles.length === getBJCPStyles(language).length && <Text style={{ color: theme.tint }}>✓ </Text>}
-                    {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.two }}>
+                    <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, flex: 1 }}>
+                      {answeredStyles.length === getBJCPStyles(language).length && <Text style={{ color: theme.tint }}>✓ </Text>}
+                      {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
+                    </Text>
+                    {(() => {
+                      const stats = getHistoryStats(getBJCPStyles(language).map(s => s.id));
+                      if (stats.correct + stats.incorrect === 0) return null;
+                      return (
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          <View style={{ backgroundColor: 'rgba(76,175,80,0.15)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                            <Text style={{ fontSize: 10, fontFamily: Fonts.manropeBold, color: theme.success }}>✓ {stats.correct}</Text>
+                          </View>
+                          <View style={{ backgroundColor: '#D99B26', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                            <Text style={{ fontSize: 10, fontFamily: Fonts.manropeBold, color: '#000' }}>~ {stats.incorrect}</Text>
+                          </View>
+                        </View>
+                      );
+                    })()}
+                  </View>
                 </Pressable>
                 {categories.map((cat, idx) => {
-                  const count = getBJCPStyles(language).filter(s => s.category === cat).length;
-                  const answeredCount = answeredStyles.filter(id => {
-                    const style = getBJCPStyles(language).find(s => s.id === id);
-                    return style && style.category === cat;
-                  }).length;
+                  const catStyles = getBJCPStyles(language).filter(s => s.category === cat);
+                  const count = catStyles.length;
+                  const answeredCount = answeredStyles.filter(id => catStyles.some(s => s.id === id)).length;
                   const isCompleted = answeredCount === count;
+                  const stats = getHistoryStats(catStyles.map(s => s.id));
                   return (
                     <Pressable
                       key={idx}
                       onPress={() => handleCategorySelect(cat)}
                       style={[
-                        styles.modeBtn, 
-                        { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+                        styles.modeBtn,
+                        { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one },
                         selectedCategory === cat && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
                       ]}
                     >
-                      <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
-                        {isCompleted && <Text style={{ color: theme.tint }}>✓ </Text>}{cat.replace(/^\d+\.\s+/, '')} ({answeredCount}/{count})
-                      </Text>
-                    </Pressable>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.two }}>
+                        <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, flex: 1 }}>
+                          {isCompleted && <Text style={{ color: theme.tint }}>✓ </Text>}{cat.replace(/^\d+\.\s+/, '')} ({answeredCount}/{count})
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                            <View style={{ backgroundColor: 'rgba(76,175,80,0.15)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 10, fontFamily: Fonts.manropeBold, color: theme.success }}>✓ {stats.correct}</Text>
+                            </View>
+                            <View style={{ backgroundColor: '#D99B26', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 10, fontFamily: Fonts.manropeBold, color: '#000' }}>~ {stats.incorrect}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </Pressable>
                   );
                 })}
               </ScrollView>
@@ -730,25 +809,82 @@ export default function FlashcardsScreen() {
           </View>
 
           <Pressable 
-            onPress={() => {
-              if (progressCount === 0) {
-                if (fcStudyMode === 'styles') {
+            onPress={async () => {
+              if (fcStudyMode === 'styles') {
+                const allStyles = getBJCPStyles(language);
+                const catStyles = selectedCategory === 'all'
+                  ? allStyles
+                  : allStyles.filter(s => s.category === selectedCategory);
+                const catIds = catStyles.map(s => s.id);
+                const allAnswered = catIds.every(id => answeredStyles.includes(id));
+
+                if (allAnswered) {
+                  // Category complete → load only "unsure" cards for a review round
+                  const history = await getHistory('styles');
+                  const unsureIds = catIds.filter(id => {
+                    const h = history[id];
+                    return !h || h.incorrect >= h.correct;
+                  });
+                  if (unsureIds.length === 0) {
+                    // Perfect score! Offer full reset instead
+                    Alert.alert(
+                      language === 'es' ? '¡Puntuación perfecta!' : 'Perfect Score!',
+                      language === 'es'
+                        ? 'Dominas todas las tarjetas de esta categoría. ¿Quieres reiniciar para volver a practicar?'
+                        : 'You have mastered all cards in this category. Reset to practice again?',
+                      [
+                        { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                        { text: language === 'es' ? 'Reiniciar' : 'Reset', onPress: handleResetProgress },
+                      ]
+                    );
+                    return;
+                  }
+                  // Remove unsure cards from answeredStyles so they can be re-answered
+                  setAnsweredStyles(prev => prev.filter(id => !unsureIds.includes(id)));
+                  const sorted = sortByDifficulty(unsureIds, history)
+                    .map(id => catStyles.find(s => s.id === id)!)
+                    .filter(Boolean);
+                  setSessionStyles(sorted);
+                  setCurrentStyle(sorted[0] || null);
+                  setIsFlipped(false);
+                  setFcScore({ correct: 0, total: 0 });
+                } else if (progressCount === 0) {
                   handleCategorySelect(selectedCategory);
-                } else if (fcStudyMode === 'glossary') {
+                }
+              } else if (progressCount === 0) {
+                if (fcStudyMode === 'glossary') {
                   startGlossarySession();
                 } else {
                   startOffFlavorsSession();
                 }
               }
               setFcState('playing');
-            }} 
+            }}
             style={[styles.startQuizBtn, { backgroundColor: theme.tint, marginTop: 0 }]}
           >
             <View style={styles.btnContentRow}>
               <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
-                {progressCount > 0 
-                  ? (language === 'es' ? 'Reanudar Estudio' : 'Resume Study')
-                  : (language === 'es' ? 'Comenzar Estudio' : 'Start Study')}
+                {(() => {
+                  if (fcStudyMode === 'styles') {
+                    const allStyles = getBJCPStyles(language);
+                    const catStyles = selectedCategory === 'all'
+                      ? allStyles
+                      : allStyles.filter(s => s.category === selectedCategory);
+                    const catIds = catStyles.map(s => s.id);
+                    const allAnswered = catIds.every(id => answeredStyles.includes(id));
+                    if (allAnswered) {
+                      // Check if there are unsure cards via lobbyHistory
+                      const hasDoubts = catIds.some(id => {
+                        const h = lobbyHistory[id];
+                        return !h || h.incorrect >= h.correct;
+                      });
+                      if (hasDoubts) return language === 'es' ? '🔁 Resolver Dudas' : '🔁 Resolve Doubts';
+                      return language === 'es' ? '✨ Puntuación Perfecta' : '✨ Perfect Score';
+                    }
+                  }
+                  if (progressCount > 0) return language === 'es' ? 'Reanudar Estudio' : 'Resume Study';
+                  return language === 'es' ? 'Comenzar Estudio' : 'Start Study';
+                })()}
               </Text>
               <QuizIcon name="arrow" color="#FFF" size={18} />
             </View>
@@ -990,14 +1126,15 @@ export default function FlashcardsScreen() {
 
   const renderGlossaryFront = () => {
     if (!currentGlossary) return null;
+    const def = language === 'es' ? currentGlossary.definition_es : currentGlossary.definition_en;
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.four }}>
-        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>{language === 'es' ? '¿QUÉ SIGNIFICA ESTE TÉRMINO?' : 'WHAT DOES THIS TERM MEAN?'}</Text>
-        <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center', paddingHorizontal: Spacing.three }}>
-          {language === 'es' ? currentGlossary.name_es : currentGlossary.name_en}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.four, paddingHorizontal: Spacing.three }}>
+        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>{language === 'es' ? '¿CUÁL ES EL TÉRMINO?' : 'WHAT IS THE TERM?'}</Text>
+        <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.text, textAlign: 'center', lineHeight: 22, paddingHorizontal: Spacing.two }}>
+          {def}
         </Text>
         <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, marginTop: Spacing.five, textAlign: 'center', opacity: 0.8 }}>
-          {language === 'es' ? 'Toca la ficha para revelar definición' : 'Tap card to reveal definition'}
+          {language === 'es' ? 'Toca la ficha para revelar el término' : 'Tap card to reveal the term'}
         </Text>
       </View>
     );
