@@ -1052,242 +1052,202 @@ export default function ExploreScreen() {
 
               </ScrollView>
             </SafeAreaView>
+
+            {/* Dynamic Link Choice Modal Overlay (Inside Main Modal) */}
+            {linkChoiceModalVisible && (
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]}>
+                <View style={styles.choiceModalOverlay}>
+                  <View style={[styles.choiceModalContainer, { backgroundColor: theme.backgroundElement }]}>
+                    <Text style={[styles.choiceModalTitle, { color: theme.text }]}>
+                      {language === 'es' ? 'Referencia Cruzada' : 'Cross Reference'}
+                    </Text>
+                    
+                    <Text style={[styles.choiceModalSubtitle, { color: theme.textSecondary }]}>
+                      {language === 'es' 
+                        ? `¿Qué te gustaría hacer con el estilo ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`
+                        : `What would you like to do with style ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`}
+                    </Text>
+
+                    <View style={styles.choiceButtonGroup}>
+                      {/* Option 1: View Details */}
+                      <Pressable 
+                        style={({ pressed }) => [
+                          styles.choiceButton, 
+                          { backgroundColor: '#D99B26', opacity: pressed ? 0.8 : 1 }
+                        ]} 
+                        onPress={() => {
+                          if (linkTargetStyle) {
+                            setSelectedStyle(linkTargetStyle);
+                          }
+                          setLinkChoiceModalVisible(false);
+                        }}
+                      >
+                        <Text style={styles.choiceButtonText}>
+                          {language === 'es' ? 'Ver Detalles' : 'View Details'}
+                        </Text>
+                      </Pressable>
+
+                      {/* Option 2: Compare */}
+                      <Pressable 
+                        style={({ pressed }) => [
+                          styles.choiceButton, 
+                          { backgroundColor: '#2F5D73', marginTop: 10, opacity: pressed ? 0.8 : 1 }
+                        ]} 
+                        onPress={() => {
+                          if (linkTargetStyle && selectedStyle) {
+                            setLinkChoiceModalVisible(false);
+                            setDetailModalVisible(false);
+                            router.push({
+                              pathname: '/comparator',
+                              params: {
+                                styleAId: selectedStyle.id,
+                                styleBId: linkTargetStyle.id
+                              }
+                            });
+                          }
+                        }}
+                      >
+                        <Text style={styles.choiceButtonText}>
+                          {language === 'es' ? 'Comparar con actual' : 'Compare with current'}
+                        </Text>
+                      </Pressable>
+
+                      {/* Option 3: Cancel */}
+                      <Pressable 
+                        style={({ pressed }) => [
+                          styles.choiceCancelButton, 
+                          { marginTop: 15, opacity: pressed ? 0.7 : 1 }
+                        ]} 
+                        onPress={() => setLinkChoiceModalVisible(false)}
+                      >
+                        <Text style={[styles.choiceCancelButtonText, { color: theme.textSecondary }]}>
+                          {language === 'es' ? 'Cancelar' : 'Cancel'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Dynamic Glossary Term Details Modal Overlay (Inside Main Modal) */}
+            {glossaryModalVisible && (
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1001, elevation: 1001 }]}>
+                <Pressable 
+                  style={styles.modalOverlay} 
+                  onPress={() => setGlossaryModalVisible(false)}
+                >
+                  <View 
+                    style={[
+                      styles.glossaryModalContent,
+                      { backgroundColor: theme.backgroundElement, borderColor: theme.border }
+                    ]}
+                    onStartShouldSetResponder={() => true}
+                  >
+                    <View style={styles.glossaryModalHeader}>
+                      <Text style={{ fontSize: 24 }}>📖</Text>
+                      <Text style={[styles.glossaryModalTitle, { color: theme.text }]} numberOfLines={2}>
+                        {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.name_es : selectedGlossaryTerm.name_en) : ''}
+                      </Text>
+                    </View>
+                    
+                    <ScrollView style={{ maxHeight: 300 }} indicatorStyle={theme.text === '#FFFFFF' ? 'white' : 'black'}>
+                      <Text style={[styles.glossaryModalBody, { color: theme.textSecondary }]}>
+                        {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.definition_es : selectedGlossaryTerm.definition_en) : ''}
+                      </Text>
+                    </ScrollView>
+
+                    <Pressable 
+                      style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
+                      onPress={() => setGlossaryModalVisible(false)}
+                    >
+                      <Text style={styles.glossaryModalButtonText}>
+                        {language === 'es' ? 'Entendido' : 'Got it'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Dynamic Off-Flavor Modal Overlay (Inside Main Modal) */}
+            {offFlavorModalVisible && (
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1002, elevation: 1002 }]}>
+                <Pressable 
+                  style={styles.modalOverlay} 
+                  onPress={() => setOffFlavorModalVisible(false)}
+                >
+                  <View 
+                    style={[
+                      styles.offFlavorCard,
+                      { backgroundColor: theme.backgroundElement, borderColor: theme.border }
+                    ]}
+                    onStartShouldSetResponder={() => true}
+                  >
+                    <View style={styles.offFlavorHeader}>
+                      <Text style={{ fontSize: 28 }}>{selectedOffFlavor?.icon || '⚠️'}</Text>
+                      <Text style={[styles.offFlavorTitle, { color: theme.text }]} numberOfLines={2}>
+                        {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.name_es : selectedOffFlavor.name_en) : ''}
+                      </Text>
+                    </View>
+
+                    <ScrollView style={{ maxHeight: 400 }} indicatorStyle={theme.text === '#FFFFFF' ? 'white' : 'black'}>
+                      
+                      {/* Section 1: Sensation */}
+                      <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                        <View style={styles.offFlavorSectionHeader}>
+                          <Text style={{ fontSize: 16 }}>👅</Text>
+                          <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                            {language === 'es' ? 'Sensación / Percepción' : 'Sensation / Perception'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                          {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.sensation_es : selectedOffFlavor.sensation_en) : ''}
+                        </Text>
+                      </View>
+
+                      {/* Section 2: Causes */}
+                      <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                        <View style={styles.offFlavorSectionHeader}>
+                          <Text style={{ fontSize: 16 }}>🧪</Text>
+                          <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                            {language === 'es' ? 'Causas Comunes' : 'Common Causes'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                          {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.causes_es : selectedOffFlavor.causes_en) : ''}
+                        </Text>
+                      </View>
+
+                      {/* Section 3: Prevention */}
+                      <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                        <View style={styles.offFlavorSectionHeader}>
+                          <Text style={{ fontSize: 16 }}>🛡️</Text>
+                          <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
+                            {language === 'es' ? 'Cómo Evitarlo / Prevención' : 'How to Prevent / Prevention'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
+                          {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.prevention_es : selectedOffFlavor.prevention_en) : ''}
+                        </Text>
+                      </View>
+                    </ScrollView>
+
+                    <Pressable 
+                      style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
+                      onPress={() => setOffFlavorModalVisible(false)}
+                    >
+                      <Text style={styles.glossaryModalButtonText}>
+                        {language === 'es' ? 'Cerrar' : 'Close'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              </View>
+            )}
+
           </View>
         )}
-      </Modal>
-
-      {/* Dynamic Link Choice Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={linkChoiceModalVisible}
-        onRequestClose={() => setLinkChoiceModalVisible(false)}
-      >
-        <View style={styles.choiceModalOverlay}>
-          <View style={[styles.choiceModalContainer, { backgroundColor: theme.backgroundElement }]}>
-            <Text style={[styles.choiceModalTitle, { color: theme.text }]}>
-              {language === 'es' ? 'Referencia Cruzada' : 'Cross Reference'}
-            </Text>
-            
-            <Text style={[styles.choiceModalSubtitle, { color: theme.textSecondary }]}>
-              {language === 'es' 
-                ? `¿Qué te gustaría hacer con el estilo ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`
-                : `What would you like to do with style ${linkTargetStyle?.name} (${linkTargetStyle?.id})?`}
-            </Text>
-
-            <View style={styles.choiceButtonGroup}>
-              {/* Option 1: View Details */}
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.choiceButton, 
-                  { backgroundColor: '#D99B26', opacity: pressed ? 0.8 : 1 }
-                ]} 
-                onPress={() => {
-                  if (linkTargetStyle) {
-                    setSelectedStyle(linkTargetStyle);
-                  }
-                  setLinkChoiceModalVisible(false);
-                }}
-              >
-                <Text style={styles.choiceButtonText}>
-                  {language === 'es' ? 'Ver Detalles' : 'View Details'}
-                </Text>
-              </Pressable>
-
-              {/* Option 2: Compare */}
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.choiceButton, 
-                  { backgroundColor: '#2F5D73', marginTop: 10, opacity: pressed ? 0.8 : 1 }
-                ]} 
-                onPress={() => {
-                  if (linkTargetStyle && selectedStyle) {
-                    setLinkChoiceModalVisible(false);
-                    setDetailModalVisible(false);
-                    router.push({
-                      pathname: '/comparator',
-                      params: {
-                        styleAId: selectedStyle.id,
-                        styleBId: linkTargetStyle.id
-                      }
-                    });
-                  }
-                }}
-              >
-                <Text style={styles.choiceButtonText}>
-                  {language === 'es' ? 'Comparar con actual' : 'Compare with current'}
-                </Text>
-              </Pressable>
-
-              {/* Option 3: Cancel */}
-              <Pressable 
-                style={({ pressed }) => [
-                  styles.choiceCancelButton, 
-                  { marginTop: 15, opacity: pressed ? 0.7 : 1 }
-                ]} 
-                onPress={() => setLinkChoiceModalVisible(false)}
-              >
-                <Text style={[styles.choiceCancelButtonText, { color: theme.textSecondary }]}>
-                  {language === 'es' ? 'Cancelar' : 'Cancel'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Dynamic Glossary Term Details Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={glossaryModalVisible}
-        onRequestClose={() => setGlossaryModalVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay} 
-          onPress={() => setGlossaryModalVisible(false)}
-        >
-          <View 
-            style={[
-              styles.glossaryModalContent,
-              { 
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.gold,
-              }
-            ]}
-          >
-            <View style={styles.glossaryModalHeader}>
-              <View style={[styles.glossaryBadge, { backgroundColor: theme.backgroundSelected }]}>
-                <Text style={{ color: theme.tint, fontSize: 18, fontWeight: '900' }}>📖</Text>
-              </View>
-              <Text style={[styles.glossaryModalTitle, { color: theme.text }]}>
-                {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.name_es : selectedGlossaryTerm.name_en) : ''}
-              </Text>
-            </View>
-
-            <ScrollView style={styles.glossaryModalBody} showsVerticalScrollIndicator={false}>
-              <Text style={[styles.glossaryModalText, { color: theme.textSecondary }]}>
-                {selectedGlossaryTerm ? (language === 'es' ? selectedGlossaryTerm.definition_es : selectedGlossaryTerm.definition_en) : ''}
-              </Text>
-            </ScrollView>
-
-            {(() => {
-              const associatedOffFlavor = selectedGlossaryTerm ? getAssociatedOffFlavor(selectedGlossaryTerm.id) : undefined;
-              return associatedOffFlavor ? (
-                <Pressable 
-                  style={[styles.glossaryModalButton, { backgroundColor: theme.gold, marginBottom: 8 }]}
-                  onPress={() => {
-                    setGlossaryModalVisible(false);
-                    setSelectedOffFlavor(associatedOffFlavor);
-                    setTimeout(() => {
-                      setOffFlavorModalVisible(true);
-                    }, 150);
-                  }}
-                >
-                  <Text style={[styles.glossaryModalButtonText, { color: '#0A0C10', fontWeight: 'bold' }]}>
-                    {language === 'es' ? 'Ver Detalles del Defecto 🔬' : 'View Off-Flavor Details 🔬'}
-                  </Text>
-                </Pressable>
-              ) : null;
-            })()}
-
-            <Pressable 
-              style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
-              onPress={() => setGlossaryModalVisible(false)}
-            >
-              <Text style={styles.glossaryModalButtonText}>
-                {language === 'es' ? 'Cerrar' : 'Close'}
-              </Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
-      {/* Off-Flavor Details Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={offFlavorModalVisible}
-        onRequestClose={() => setOffFlavorModalVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay} 
-          onPress={() => setOffFlavorModalVisible(false)}
-        >
-          <View 
-            style={[
-              styles.offFlavorCard,
-              { 
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border, // Brand Stainless Steel border for neutral clean framing
-              }
-            ]}
-          >
-            <View style={styles.offFlavorHeader}>
-              <View style={[styles.offFlavorBadge, { backgroundColor: theme.backgroundSelected }]}>
-                <Text style={{ fontSize: 20 }}>🔬</Text>
-              </View>
-              <View style={styles.offFlavorTitleContainer}>
-                <Text style={[styles.offFlavorTitle, { color: theme.text }]}>
-                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.name_es : selectedOffFlavor.name_en) : ''}
-                </Text>
-                <Text style={[styles.offFlavorSubtitle, { color: theme.textSecondary }]}>
-                  {language === 'es' ? 'Defecto de la Cerveza' : 'Beer Off-Flavor'}
-                </Text>
-              </View>
-            </View>
-
-            <ScrollView style={styles.offFlavorBody} showsVerticalScrollIndicator={false}>
-              {/* Section 1: Sensation / Descriptor */}
-              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                <View style={styles.offFlavorSectionHeader}>
-                  <Text style={{ fontSize: 16 }}>👅</Text>
-                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
-                    {language === 'es' ? 'Sensación / Descriptor' : 'Sensation / Descriptor'}
-                  </Text>
-                </View>
-                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
-                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.sensation_es : selectedOffFlavor.sensation_en) : ''}
-                </Text>
-              </View>
-
-              {/* Section 2: Causes */}
-              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                <View style={styles.offFlavorSectionHeader}>
-                  <Text style={{ fontSize: 16 }}>🔬</Text>
-                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
-                    {language === 'es' ? 'Causas Posibles' : 'Possible Causes'}
-                  </Text>
-                </View>
-                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
-                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.causes_es : selectedOffFlavor.causes_en) : ''}
-                </Text>
-              </View>
-
-              {/* Section 3: Prevention */}
-              <View style={[styles.offFlavorSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                <View style={styles.offFlavorSectionHeader}>
-                  <Text style={{ fontSize: 16 }}>🛡️</Text>
-                  <Text style={[styles.offFlavorSectionTitle, { color: theme.text }]}>
-                    {language === 'es' ? 'Cómo Evitarlo / Prevención' : 'How to Prevent / Prevention'}
-                  </Text>
-                </View>
-                <Text style={[styles.offFlavorSectionText, { color: theme.textSecondary }]}>
-                  {selectedOffFlavor ? (language === 'es' ? selectedOffFlavor.prevention_es : selectedOffFlavor.prevention_en) : ''}
-                </Text>
-              </View>
-            </ScrollView>
-
-            <Pressable 
-              style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
-              onPress={() => setOffFlavorModalVisible(false)}
-            >
-              <Text style={styles.glossaryModalButtonText}>
-                {language === 'es' ? 'Cerrar' : 'Close'}
-              </Text>
-            </Pressable>
-          </View>
-        </Pressable>
       </Modal>
 
     </ThemedView>
