@@ -7,7 +7,8 @@ import {
   ScrollView, 
   Modal, 
   TextInput, 
-  FlatList
+  FlatList,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -48,15 +49,15 @@ export default function ComparatorScreen() {
 
   // Sync route params to pre-load styles
   useEffect(() => {
-    if (params.styleAId) {
+    if (params.styleAId && styleA?.id.toLowerCase() !== params.styleAId.toLowerCase()) {
       const foundA = stylesList.find(s => s.id.toLowerCase() === params.styleAId?.toLowerCase());
       if (foundA) setStyleA(foundA);
     }
-    if (params.styleBId) {
+    if (params.styleBId && styleB?.id.toLowerCase() !== params.styleBId.toLowerCase()) {
       const foundB = stylesList.find(s => s.id.toLowerCase() === params.styleBId?.toLowerCase());
       if (foundB) setStyleB(foundB);
     }
-  }, [params.styleAId, params.styleBId, stylesList]);
+  }, [params.styleAId, params.styleBId, styleA?.id, styleB?.id, language]);
 
   // Selection Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -103,6 +104,11 @@ export default function ComparatorScreen() {
     { id: 'history' as const, label: t('history').split('.')[1]?.trim() || t('history') },
     { id: 'commercialExamples' as const, label: language === 'es' ? 'Ejemplos Comerciales' : 'Commercial Examples' },
   ];
+
+  const flatListRef = React.useRef<FlatList>(null);
+  const tabsListRef = React.useRef<FlatList>(null);
+  const screenWidth = Dimensions.get('window').width;
+  const contentWidth = screenWidth - 48; // Container has Spacing.four (24) horizontal padding
 
   return (
     <ThemedView style={styles.container}>
@@ -203,7 +209,7 @@ export default function ComparatorScreen() {
                 <View style={styles.barometerRow}>
                   <View style={styles.barometerLabels}>
                     <Text style={styles.barLabel}>{styleA.abvMin}% - {styleA.abvMax}%</Text>
-                    <Text style={styles.barTitle}>{t('abv')}</Text>
+                    <Text style={styles.barTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{t('abv')}</Text>
                     <Text style={styles.barLabel}>{styleB.abvMin}% - {styleB.abvMax}%</Text>
                   </View>
                   <View style={styles.progressBarWrapper}>
@@ -234,7 +240,7 @@ export default function ComparatorScreen() {
                 <View style={styles.barometerRow}>
                   <View style={styles.barometerLabels}>
                     <Text style={styles.barLabel}>{styleA.ibuMin} - {styleA.ibuMax}</Text>
-                    <Text style={styles.barTitle}>{t('ibu')}</Text>
+                    <Text style={styles.barTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{t('ibu')}</Text>
                     <Text style={styles.barLabel}>{styleB.ibuMin} - {styleB.ibuMax}</Text>
                   </View>
                   <View style={styles.progressBarWrapper}>
@@ -263,7 +269,7 @@ export default function ComparatorScreen() {
                 <View style={styles.barometerRow}>
                   <View style={styles.barometerLabels}>
                     <Text style={styles.barLabel}>SRM {styleA.srmMin} - {styleA.srmMax}</Text>
-                    <Text style={styles.barTitle}>{t('srm')}</Text>
+                    <Text style={styles.barTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{t('srm')}</Text>
                     <Text style={styles.barLabel}>SRM {styleB.srmMin} - {styleB.srmMax}</Text>
                   </View>
                   <View style={styles.colorCompareRow}>
@@ -306,76 +312,106 @@ export default function ComparatorScreen() {
               </View>
 
               {/* Descriptive tabs select scroller */}
-              <ScrollView 
+              <FlatList 
+                ref={tabsListRef}
+                data={tabOptions}
+                keyExtractor={(item) => item.id}
                 horizontal 
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.tabsScroller}
-              >
-                {tabOptions.map((opt) => {
+                renderItem={({ item: opt, index: idx }) => {
                   const active = activeTab === opt.id;
                   return (
                     <Pressable
-                      key={opt.id}
-                      onPress={() => setActiveTab(opt.id)}
+                      onPress={() => {
+                        setActiveTab(opt.id);
+                        flatListRef.current?.scrollToIndex({ index: idx, animated: true });
+                        tabsListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+                      }}
                       style={[
                         styles.tabButton,
-                        { backgroundColor: active ? '#2F5D73' : theme.backgroundElement, borderColor: theme.border }
+                        { 
+                          backgroundColor: active ? theme.backgroundElement : 'transparent', 
+                          borderColor: active ? theme.backgroundElement : 'rgba(255, 255, 255, 0.4)'
+                        }
                       ]}
                     >
-                      <Text style={[styles.tabLabel, { color: active ? '#FFF' : theme.text }]}>
+                      <Text style={[styles.tabLabel, { color: active ? theme.text : '#FFF' }]}>
                         {opt.label}
                       </Text>
                     </Pressable>
                   );
-                })}
-              </ScrollView>
+                }}
+              />
 
-              {/* Double descriptive textual panels side-by-side */}
-              <View style={styles.descriptivePanels}>
-                {/* Style A Panel */}
-                <View style={[styles.descPanel, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                  <View style={styles.panelHeaderA}>
-                    <Text style={styles.panelTitleText}>{styleA.id}</Text>
-                  </View>
-                  <ScrollView nestedScrollEnabled style={styles.panelScroll}>
-                    <Text style={[styles.panelBodyText, { color: theme.text }]}>
-                      {activeTab === 'impression' && styleA.overallImpression}
-                      {activeTab === 'aroma' && styleA.aroma}
-                      {activeTab === 'appearance' && styleA.appearance}
-                      {activeTab === 'flavor' && styleA.flavor}
-                      {activeTab === 'mouthfeel' && styleA.mouthfeel}
-                      {activeTab === 'history' && styleA.history}
-                      {activeTab === 'commercialExamples' && (
-                        styleA.commercialExamples.length > 0
-                          ? '• ' + styleA.commercialExamples.join('\n• ')
-                          : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
-                      )}
-                    </Text>
-                  </ScrollView>
-                </View>
+              {/* Double descriptive textual panels side-by-side with swipe gesture */}
+              <FlatList
+                ref={flatListRef}
+                data={tabOptions}
+                keyExtractor={(item) => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                onScroll={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / contentWidth);
+                  if (tabOptions[idx] && tabOptions[idx].id !== activeTab) {
+                    setActiveTab(tabOptions[idx].id);
+                    tabsListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.5 });
+                  }
+                }}
+                scrollEventThrottle={16}
+                getItemLayout={(data, index) => (
+                  { length: contentWidth, offset: contentWidth * index, index }
+                )}
+                renderItem={({ item: opt }) => (
+                  <View style={[styles.descriptivePanels, { width: contentWidth }]}>
+                    {/* Style A Panel */}
+                    <View style={[styles.descPanel, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                      <View style={styles.panelHeaderA}>
+                        <Text style={styles.panelTitleText}>{styleA.id}</Text>
+                      </View>
+                      <ScrollView nestedScrollEnabled style={styles.panelScroll}>
+                        <Text style={[styles.panelBodyText, { color: theme.text }]}>
+                          {opt.id === 'impression' && styleA.overallImpression}
+                          {opt.id === 'aroma' && styleA.aroma}
+                          {opt.id === 'appearance' && styleA.appearance}
+                          {opt.id === 'flavor' && styleA.flavor}
+                          {opt.id === 'mouthfeel' && styleA.mouthfeel}
+                          {opt.id === 'history' && styleA.history}
+                          {opt.id === 'commercialExamples' && (
+                            styleA.commercialExamples.length > 0
+                              ? '• ' + styleA.commercialExamples.join('\n• ')
+                              : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
+                          )}
+                        </Text>
+                      </ScrollView>
+                    </View>
 
-                {/* Style B Panel */}
-                <View style={[styles.descPanel, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                  <View style={styles.panelHeaderB}>
-                    <Text style={styles.panelTitleText}>{styleB.id}</Text>
+                    {/* Style B Panel */}
+                    <View style={[styles.descPanel, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                      <View style={styles.panelHeaderB}>
+                        <Text style={styles.panelTitleText}>{styleB.id}</Text>
+                      </View>
+                      <ScrollView nestedScrollEnabled style={styles.panelScroll}>
+                        <Text style={[styles.panelBodyText, { color: theme.text }]}>
+                          {opt.id === 'impression' && styleB.overallImpression}
+                          {opt.id === 'aroma' && styleB.aroma}
+                          {opt.id === 'appearance' && styleB.appearance}
+                          {opt.id === 'flavor' && styleB.flavor}
+                          {opt.id === 'mouthfeel' && styleB.mouthfeel}
+                          {opt.id === 'history' && styleB.history}
+                          {opt.id === 'commercialExamples' && (
+                            styleB.commercialExamples.length > 0
+                              ? '• ' + styleB.commercialExamples.join('\n• ')
+                              : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
+                          )}
+                        </Text>
+                      </ScrollView>
+                    </View>
                   </View>
-                  <ScrollView nestedScrollEnabled style={styles.panelScroll}>
-                    <Text style={[styles.panelBodyText, { color: theme.text }]}>
-                      {activeTab === 'impression' && styleB.overallImpression}
-                      {activeTab === 'aroma' && styleB.aroma}
-                      {activeTab === 'appearance' && styleB.appearance}
-                      {activeTab === 'flavor' && styleB.flavor}
-                      {activeTab === 'mouthfeel' && styleB.mouthfeel}
-                      {activeTab === 'history' && styleB.history}
-                      {activeTab === 'commercialExamples' && (
-                        styleB.commercialExamples.length > 0
-                          ? '• ' + styleB.commercialExamples.join('\n• ')
-                          : (language === 'es' ? 'No hay ejemplos registrados.' : 'No examples registered.')
-                      )}
-                    </Text>
-                  </ScrollView>
-                </View>
-              </View>
+                )}
+              />
             </View>
           )}
         </ScrollView>
@@ -623,6 +659,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barTitle: {
+    flex: 1,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.one,
     fontSize: 11,
     fontWeight: '800',
     color: '#D99B26',

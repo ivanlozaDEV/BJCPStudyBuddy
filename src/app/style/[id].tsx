@@ -680,9 +680,11 @@ export default function StyleDetailScreen() {
                         ]} 
                         onPress={() => {
                           if (linkTargetStyle) {
-                            router.push(('/style/' + linkTargetStyle.id) as any);
+                            setLinkChoiceModalVisible(false);
+                            setTimeout(() => {
+                              router.push(('/style/' + linkTargetStyle.id) as any);
+                            }, 300);
                           }
-                          setLinkChoiceModalVisible(false);
                         }}
                       >
                         <Text style={styles.choiceButtonText}>
@@ -699,14 +701,15 @@ export default function StyleDetailScreen() {
                         onPress={() => {
                           if (linkTargetStyle && selectedStyle) {
                             setLinkChoiceModalVisible(false);
-                            router.back();
-                            router.push({
-                              pathname: '/comparator',
-                              params: {
-                                styleAId: selectedStyle.id,
-                                styleBId: linkTargetStyle.id
-                              }
-                            });
+                            setTimeout(() => {
+                              router.push({
+                                pathname: '/comparator',
+                                params: {
+                                  styleAId: selectedStyle.id,
+                                  styleBId: linkTargetStyle.id
+                                }
+                              });
+                            }, 300);
                           }
                         }}
                       >
