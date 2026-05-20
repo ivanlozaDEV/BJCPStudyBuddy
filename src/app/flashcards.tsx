@@ -765,25 +765,59 @@ export default function FlashcardsScreen() {
             </>
           )}
 
-          {fcStudyMode === 'glossary' && (
-            <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>
-                {language === 'es' 
-                  ? 'Aprende los términos técnicos más importantes de la guía BJCP (atenuación, cuerpo, ésteres, fenoles, etc.). En el frente verás el término, al revelar verás su definición completa.'
-                  : 'Study key technical terminology from the BJCP guidelines (attenuation, body, esters, phenols, etc.). The front shows the term; the back reveals its complete definition.'}
-              </Text>
-            </View>
-          )}
+          {fcStudyMode === 'glossary' && (() => {
+            const ids = GLOSSARY_DATA.map(g => g.id);
+            const stats = getHistoryStats(ids);
+            return (
+              <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
+                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20, marginBottom: Spacing.three }}>
+                  {language === 'es'
+                    ? 'Aprende los términos técnicos más importantes de la guía BJCP. Verás la definición y deberás recordar el término.'
+                    : 'Study key BJCP technical terminology. You\'ll see the definition and must recall the term.'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.textSecondary }}>
+                    {language === 'es' ? 'Historial:' : 'History:'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={{ backgroundColor: 'rgba(76,175,80,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.success }}>✓ {stats.correct} {language === 'es' ? 'lo sabía' : 'knew it'}</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#D99B26', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: '#000' }}>~ {stats.incorrect} {language === 'es' ? 'lo dudé' : 'unsure'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
 
-          {fcStudyMode === 'offflavors' && (
-            <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>
-                {language === 'es' 
-                  ? 'Domina los perfiles de defectos sensoriales habituales en la cerveza. Utiliza las pistas progresivas en el frente para recordar sus sensaciones y causas antes de revelar el contenido.'
-                  : 'Master common off-flavor sensory profiles in beer. Use progressive clues on the front of the card to recall their sensation, cause, and prevention before flipping the card.'}
-              </Text>
-            </View>
-          )}
+          {fcStudyMode === 'offflavors' && (() => {
+            const ids = OFF_FLAVORS_DATA.map(o => o.id);
+            const stats = getHistoryStats(ids);
+            return (
+              <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
+                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20, marginBottom: Spacing.three }}>
+                  {language === 'es'
+                    ? 'Domina los perfiles de defectos sensoriales habituales en la cerveza. Usa las pistas progresivas para recordar sus sensaciones y causas antes de revelar.'
+                    : 'Master common off-flavor sensory profiles. Use progressive clues to recall their sensation and causes before flipping the card.'}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.textSecondary }}>
+                    {language === 'es' ? 'Historial:' : 'History:'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={{ backgroundColor: 'rgba(76,175,80,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.success }}>✓ {stats.correct} {language === 'es' ? 'lo sabía' : 'knew it'}</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#D99B26', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: '#000' }}>~ {stats.incorrect} {language === 'es' ? 'lo dudé' : 'unsure'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Lobby Progress Visualization */}
           <View style={{ marginBottom: Spacing.four, marginTop: Spacing.two, paddingHorizontal: Spacing.one }}>
@@ -819,31 +853,21 @@ export default function FlashcardsScreen() {
                 const allAnswered = catIds.every(id => answeredStyles.includes(id));
 
                 if (allAnswered) {
-                  // Category complete → load only "unsure" cards for a review round
                   const history = await getHistory('styles');
-                  const unsureIds = catIds.filter(id => {
-                    const h = history[id];
-                    return !h || h.incorrect >= h.correct;
-                  });
+                  const unsureIds = catIds.filter(id => { const h = history[id]; return !h || h.incorrect >= h.correct; });
                   if (unsureIds.length === 0) {
-                    // Perfect score! Offer full reset instead
                     Alert.alert(
                       language === 'es' ? '¡Puntuación perfecta!' : 'Perfect Score!',
                       language === 'es'
-                        ? 'Dominas todas las tarjetas de esta categoría. ¿Quieres reiniciar para volver a practicar?'
+                        ? 'Dominas todas las tarjetas de esta categoría. ¿Quieres reiniciar?'
                         : 'You have mastered all cards in this category. Reset to practice again?',
-                      [
-                        { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
-                        { text: language === 'es' ? 'Reiniciar' : 'Reset', onPress: handleResetProgress },
-                      ]
+                      [{ text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                       { text: language === 'es' ? 'Reiniciar' : 'Reset', onPress: handleResetProgress }]
                     );
                     return;
                   }
-                  // Remove unsure cards from answeredStyles so they can be re-answered
                   setAnsweredStyles(prev => prev.filter(id => !unsureIds.includes(id)));
-                  const sorted = sortByDifficulty(unsureIds, history)
-                    .map(id => catStyles.find(s => s.id === id)!)
-                    .filter(Boolean);
+                  const sorted = sortByDifficulty(unsureIds, history).map(id => catStyles.find(s => s.id === id)!).filter(Boolean);
                   setSessionStyles(sorted);
                   setCurrentStyle(sorted[0] || null);
                   setIsFlipped(false);
@@ -851,10 +875,59 @@ export default function FlashcardsScreen() {
                 } else if (progressCount === 0) {
                   handleCategorySelect(selectedCategory);
                 }
-              } else if (progressCount === 0) {
-                if (fcStudyMode === 'glossary') {
+
+              } else if (fcStudyMode === 'glossary') {
+                const allAnswered = GLOSSARY_DATA.every(g => answeredGlossary.includes(g.id));
+                if (allAnswered) {
+                  const history = await getHistory('glossary');
+                  const unsureIds = GLOSSARY_DATA.map(g => g.id).filter(id => { const h = history[id]; return !h || h.incorrect >= h.correct; });
+                  if (unsureIds.length === 0) {
+                    Alert.alert(
+                      language === 'es' ? '¡Puntuación perfecta!' : 'Perfect Score!',
+                      language === 'es'
+                        ? 'Dominas todos los términos del glosario. ¿Quieres reiniciar?'
+                        : 'You have mastered all glossary terms. Reset to practice again?',
+                      [{ text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                       { text: language === 'es' ? 'Reiniciar' : 'Reset', onPress: handleResetProgress }]
+                    );
+                    return;
+                  }
+                  setAnsweredGlossary(prev => prev.filter(id => !unsureIds.includes(id)));
+                  const history2 = await getHistory('glossary');
+                  const sorted = sortByDifficulty(unsureIds, history2).map(id => GLOSSARY_DATA.find(g => g.id === id)!).filter(Boolean);
+                  setSessionGlossary(sorted);
+                  setCurrentGlossary(sorted[0] || null);
+                  setIsFlipped(false);
+                  setFcScore({ correct: 0, total: 0 });
+                } else if (progressCount === 0) {
                   startGlossarySession();
-                } else {
+                }
+
+              } else {
+                // offflavors
+                const allAnswered = OFF_FLAVORS_DATA.every(o => answeredOffFlavors.includes(o.id));
+                if (allAnswered) {
+                  const history = await getHistory('offflavors');
+                  const unsureIds = OFF_FLAVORS_DATA.map(o => o.id).filter(id => { const h = history[id]; return !h || h.incorrect >= h.correct; });
+                  if (unsureIds.length === 0) {
+                    Alert.alert(
+                      language === 'es' ? '¡Puntuación perfecta!' : 'Perfect Score!',
+                      language === 'es'
+                        ? 'Dominas todos los off-flavors. ¿Quieres reiniciar?'
+                        : 'You have mastered all off-flavors. Reset to practice again?',
+                      [{ text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                       { text: language === 'es' ? 'Reiniciar' : 'Reset', onPress: handleResetProgress }]
+                    );
+                    return;
+                  }
+                  setAnsweredOffFlavors(prev => prev.filter(id => !unsureIds.includes(id)));
+                  const history2 = await getHistory('offflavors');
+                  const sorted = sortByDifficulty(unsureIds, history2).map(id => OFF_FLAVORS_DATA.find(o => o.id === id)!).filter(Boolean);
+                  setSessionOffFlavors(sorted);
+                  setCurrentOffFlavor(sorted[0] || null);
+                  setIsFlipped(false);
+                  setFcScore({ correct: 0, total: 0 });
+                } else if (progressCount === 0) {
                   startOffFlavorsSession();
                 }
               }
@@ -865,19 +938,29 @@ export default function FlashcardsScreen() {
             <View style={styles.btnContentRow}>
               <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
                 {(() => {
+                  // Styles
                   if (fcStudyMode === 'styles') {
                     const allStyles = getBJCPStyles(language);
-                    const catStyles = selectedCategory === 'all'
-                      ? allStyles
-                      : allStyles.filter(s => s.category === selectedCategory);
+                    const catStyles = selectedCategory === 'all' ? allStyles : allStyles.filter(s => s.category === selectedCategory);
                     const catIds = catStyles.map(s => s.id);
-                    const allAnswered = catIds.every(id => answeredStyles.includes(id));
-                    if (allAnswered) {
-                      // Check if there are unsure cards via lobbyHistory
-                      const hasDoubts = catIds.some(id => {
-                        const h = lobbyHistory[id];
-                        return !h || h.incorrect >= h.correct;
-                      });
+                    if (catIds.every(id => answeredStyles.includes(id))) {
+                      const hasDoubts = catIds.some(id => { const h = lobbyHistory[id]; return !h || h.incorrect >= h.correct; });
+                      if (hasDoubts) return language === 'es' ? '🔁 Resolver Dudas' : '🔁 Resolve Doubts';
+                      return language === 'es' ? '✨ Puntuación Perfecta' : '✨ Perfect Score';
+                    }
+                  }
+                  // Glossary
+                  if (fcStudyMode === 'glossary') {
+                    if (GLOSSARY_DATA.every(g => answeredGlossary.includes(g.id))) {
+                      const hasDoubts = GLOSSARY_DATA.some(g => { const h = lobbyHistory[g.id]; return !h || h.incorrect >= h.correct; });
+                      if (hasDoubts) return language === 'es' ? '🔁 Resolver Dudas' : '🔁 Resolve Doubts';
+                      return language === 'es' ? '✨ Puntuación Perfecta' : '✨ Perfect Score';
+                    }
+                  }
+                  // Off-Flavors
+                  if (fcStudyMode === 'offflavors') {
+                    if (OFF_FLAVORS_DATA.every(o => answeredOffFlavors.includes(o.id))) {
+                      const hasDoubts = OFF_FLAVORS_DATA.some(o => { const h = lobbyHistory[o.id]; return !h || h.incorrect >= h.correct; });
                       if (hasDoubts) return language === 'es' ? '🔁 Resolver Dudas' : '🔁 Resolve Doubts';
                       return language === 'es' ? '✨ Puntuación Perfecta' : '✨ Perfect Score';
                     }
@@ -1164,10 +1247,23 @@ export default function FlashcardsScreen() {
 
   const renderOffFlavorsFront = () => {
     if (!currentOffFlavor) return null;
-    const name = language === 'es' ? currentOffFlavor.name_es : currentOffFlavor.name_en;
+    const name_en = currentOffFlavor.name_en;
+    const name_es = currentOffFlavor.name_es ?? name_en;
     const sensation = language === 'es' ? currentOffFlavor.sensation_es : currentOffFlavor.sensation_en;
     const causes = language === 'es' ? currentOffFlavor.causes_es : currentOffFlavor.causes_en;
     const prevention = language === 'es' ? currentOffFlavor.prevention_es : currentOffFlavor.prevention_en;
+
+    // Censor the defect name wherever it appears in causes/prevention text
+    const censor = (text: string) => {
+      let result = text;
+      [name_en, name_es].forEach(n => {
+        if (!n) return;
+        // Escape special regex chars, then replace case-insensitively
+        const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result = result.replace(new RegExp(escaped, 'gi'), '___');
+      });
+      return result;
+    };
 
     return (
       <>
@@ -1185,24 +1281,37 @@ export default function FlashcardsScreen() {
           <View style={{ gap: Spacing.two, paddingBottom: Spacing.two }}>
             <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Pistas Adicionales:' : 'Additional Clues:'}</Text>
 
-            {/* Sensation Hint */}
+            {/* Sensation Hint — always visible */}
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{censor(sensation)}</Text>
             </View>
 
-            {/* Causes Hint */}
-            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
-              <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
-            </View>
+            {/* Causes Hint — collapsed by default, tap to reveal */}
+            <Pressable
+              onPress={() => setRevealedOffClues(prev => ({ ...prev, causes: !prev.causes }))}
+              style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.tint, textTransform: 'uppercase' }}>
+                  {language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.tint }}>
+                  {revealedOffClues.causes ? '▲' : '▼ ' + (language === 'es' ? 'revelar' : 'reveal')}
+                </Text>
+              </View>
+              {revealedOffClues.causes && (
+                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{censor(causes)}</Text>
+              )}
+            </Pressable>
 
-            {/* Prevention Hint */}
+            {/* Prevention Hint — always visible */}
             <View style={{ paddingBottom: Spacing.one }}>
               <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{censor(prevention)}</Text>
             </View>
           </View>
+
         </ScrollView>
       </>
     );
