@@ -42,7 +42,12 @@ export default function TabLayout() {
         <ThemeProvider value={DefaultTheme}>
           <StatusBar style="dark" />
           <AnimatedSplashOverlay />
-          <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />
+          <Stack screenOptions={{ 
+            headerShown: false, 
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            fullScreenGestureEnabled: true 
+          }} />
         </ThemeProvider>
       </LanguageProvider>
     </SafeAreaProvider>

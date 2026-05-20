@@ -11,7 +11,7 @@ import {
   Text,
   Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 
 import Svg, { Path } from 'react-native-svg';
@@ -740,8 +740,9 @@ export default function ExploreScreen() {
         onRequestClose={() => setDetailModalVisible(false)}
       >
         {selectedStyle && (
-          <View style={styles.modalContainer}>
-            <SafeAreaView style={styles.modalSafeArea} edges={['top', 'bottom']}>
+          <SafeAreaProvider>
+            <View style={styles.modalContainer}>
+              <SafeAreaView style={styles.modalSafeArea} edges={['top', 'bottom']}>
               
               {/* Modal Header */}
               <View style={styles.modalHeader}>
@@ -1246,7 +1247,8 @@ export default function ExploreScreen() {
               </View>
             )}
 
-          </View>
+            </View>
+          </SafeAreaProvider>
         )}
       </Modal>
 
