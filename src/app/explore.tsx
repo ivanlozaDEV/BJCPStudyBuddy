@@ -47,24 +47,30 @@ function getSRMContrastColor(srm: number): string {
 }
 
 // Volume Options Definitions
-const abvLevels = [
-  { value: 'all', label: 'Todos', desc: 'Cualquier alcohol' },
-  { value: 'low', label: 'Suave', desc: '<4.5% ABV' },
-  { value: 'mid', label: 'Medio', desc: '4.5% - 6.5%' },
-  { value: 'high', label: 'Fuerte', desc: '>6.5% ABV' },
-] as const;
+function getAbvLevels(language: 'es' | 'en') {
+  return [
+    { value: 'all', label: language === 'es' ? 'Todos' : 'All', desc: language === 'es' ? 'Cualquier alcohol' : 'Any ABV' },
+    { value: 'low', label: language === 'es' ? 'Suave' : 'Low', desc: '<4.5% ABV' },
+    { value: 'mid', label: language === 'es' ? 'Medio' : 'Medium', desc: '4.5% - 6.5%' },
+    { value: 'high', label: language === 'es' ? 'Fuerte' : 'High', desc: '>6.5% ABV' },
+  ] as const;
+}
 
-const ibuLevels = [
-  { value: 'all', label: 'Todos', desc: 'Cualquier amargor' },
-  { value: 'low', label: 'Bajo', desc: '<20 IBU' },
-  { value: 'mid', label: 'Medio', desc: '20 - 45 IBU' },
-  { value: 'high', label: 'Alto', desc: '>45 IBU' },
-] as const;
+function getIbuLevels(language: 'es' | 'en') {
+  return [
+    { value: 'all', label: language === 'es' ? 'Todos' : 'All', desc: language === 'es' ? 'Cualquier amargor' : 'Any IBU' },
+    { value: 'low', label: language === 'es' ? 'Bajo' : 'Low', desc: '<20 IBU' },
+    { value: 'mid', label: language === 'es' ? 'Medio' : 'Medium', desc: '20 - 45 IBU' },
+    { value: 'high', label: language === 'es' ? 'Alto' : 'High', desc: '>45 IBU' },
+  ] as const;
+}
 
 export default function ExploreScreen() {
   const params = useLocalSearchParams<{ search?: string }>();
   const theme = useTheme();
   const { t, language } = useTranslation();
+  const abvLevels = getAbvLevels(language);
+  const ibuLevels = getIbuLevels(language);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -717,9 +723,9 @@ export default function ExploreScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🍺🚫</Text>
-              <Text style={styles.emptyTitle}>Ningún estilo coincide</Text>
+              <Text style={styles.emptyTitle}>{t('noResults')}</Text>
               <Text style={styles.emptyBody}>
-                Ajusta las barras de volumen o borra la búsqueda para encontrar estilos.
+                {t('noResultsDesc')}
               </Text>
             </View>
           }
@@ -744,7 +750,7 @@ export default function ExploreScreen() {
                   style={styles.modalCloseBtn}
                 >
                   <Text style={styles.modalBackText}>
-                    ← Volver
+                    {language === 'es' ? '← Volver' : '← Back'}
                   </Text>
                 </Pressable>
                 <Text style={styles.modalSubHeader}>
@@ -804,7 +810,7 @@ export default function ExploreScreen() {
                         {selectedStyle.name}
                       </Text>
                       <Text style={styles.styleMainCategory}>
-                        Categoría: {selectedStyle.category}
+                        {language === 'es' ? 'Categoría:' : 'Category:'} {selectedStyle.category}
                       </Text>
                     </View>
                   </View>
@@ -832,8 +838,8 @@ export default function ExploreScreen() {
                       })()}
                     </View>
                     <View style={styles.srmLegendRow}>
-                      <Text style={styles.srmLegendText}>SRM Mín: {selectedStyle.srmMin}</Text>
-                      <Text style={styles.srmLegendText}>SRM Máx: {selectedStyle.srmMax}</Text>
+                      <Text style={styles.srmLegendText}>{language === 'es' ? 'SRM Mín:' : 'Min SRM:'} {selectedStyle.srmMin}</Text>
+                      <Text style={styles.srmLegendText}>{language === 'es' ? 'SRM Máx:' : 'Max SRM:'} {selectedStyle.srmMax}</Text>
                     </View>
                   </View>
                 </View>

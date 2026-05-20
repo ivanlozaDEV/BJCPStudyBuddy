@@ -168,11 +168,11 @@ export default function SettingsScreen() {
             </ThemedText>
           </View>
           <ThemedView type="backgroundElement" style={styles.settingsGroup}>
-            {renderSettingRow("🌐", t('officialSite'), undefined, () => alert("Navegando a BJCP.org..."))}
+            {renderSettingRow("🌐", t('officialSite'), undefined, () => alert(language === 'es' ? 'Navegando a BJCP.org...' : 'Navigating to BJCP.org...'))}
             <View style={styles.divider} />
-            {renderSettingRow("📜", t('downloadPdf'), undefined, () => alert("Abriendo PDF de Estilos..."))}
+            {renderSettingRow("📜", t('downloadPdf'), undefined, () => alert(language === 'es' ? 'Abriendo PDF de Estilos...' : 'Opening Style Guide PDF...'))}
             <View style={styles.divider} />
-            {renderSettingRow("📬", t('appFeedback'), undefined, () => alert("Contacto: soporte@bjcpbuddy.com"))}
+            {renderSettingRow("📬", t('appFeedback'), undefined, () => alert(language === 'es' ? 'Contacto: soporte@bjcpbuddy.com' : 'Contact: support@bjcpbuddy.com'))}
           </ThemedView>
 
           {/* Danger Zone */}

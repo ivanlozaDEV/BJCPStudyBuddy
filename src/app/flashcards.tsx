@@ -3,6 +3,7 @@ import { StyleSheet, Pressable, View, ScrollView, Alert, Text } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -93,6 +94,7 @@ export default function FlashcardsScreen() {
 
   const [isFlipped, setIsFlipped] = useState(false);
   const [fcScore, setFcScore] = useState({ correct: 0, total: 0 });
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // ==========================================
   // QUIZ STATE
@@ -152,17 +154,214 @@ export default function FlashcardsScreen() {
     });
   };
 
+  // Load saved progress from AsyncStorage on mount
   useEffect(() => {
+    const loadSavedProgress = async () => {
+      try {
+        const keys = [
+          '@BJCPStudyBuddy:fcStudyMode',
+          '@BJCPStudyBuddy:selectedCategory',
+          '@BJCPStudyBuddy:answeredStyles',
+          '@BJCPStudyBuddy:answeredGlossary',
+          '@BJCPStudyBuddy:answeredOffFlavors',
+          '@BJCPStudyBuddy:fcScore',
+          '@BJCPStudyBuddy:sessionStylesIds',
+          '@BJCPStudyBuddy:currentStyleId',
+          '@BJCPStudyBuddy:sessionGlossaryIds',
+          '@BJCPStudyBuddy:currentGlossaryId',
+          '@BJCPStudyBuddy:sessionOffFlavorsIds',
+          '@BJCPStudyBuddy:currentOffFlavorId',
+        ];
+        const results = await AsyncStorage.multiGet(keys);
+        const data = Object.fromEntries(results);
+
+        const savedFcStudyMode = data['@BJCPStudyBuddy:fcStudyMode'] as any;
+        const savedSelectedCategory = data['@BJCPStudyBuddy:selectedCategory'];
+        const savedAnsweredStyles = data['@BJCPStudyBuddy:answeredStyles'];
+        const savedAnsweredGlossary = data['@BJCPStudyBuddy:answeredGlossary'];
+        const savedAnsweredOffFlavors = data['@BJCPStudyBuddy:answeredOffFlavors'];
+        const savedFcScore = data['@BJCPStudyBuddy:fcScore'];
+        const savedSessionStylesIds = data['@BJCPStudyBuddy:sessionStylesIds'];
+        const savedCurrentStyleId = data['@BJCPStudyBuddy:currentStyleId'];
+        const savedSessionGlossaryIds = data['@BJCPStudyBuddy:sessionGlossaryIds'];
+        const savedCurrentGlossaryId = data['@BJCPStudyBuddy:currentGlossaryId'];
+        const savedSessionOffFlavorsIds = data['@BJCPStudyBuddy:sessionOffFlavorsIds'];
+        const savedCurrentOffFlavorId = data['@BJCPStudyBuddy:currentOffFlavorId'];
+
+        if (savedFcStudyMode) {
+          setFcStudyMode(savedFcStudyMode);
+        }
+        if (savedSelectedCategory) {
+          setSelectedCategory(savedSelectedCategory);
+        }
+        if (savedAnsweredStyles) {
+          setAnsweredStyles(JSON.parse(savedAnsweredStyles));
+        }
+        if (savedAnsweredGlossary) {
+          setAnsweredGlossary(JSON.parse(savedAnsweredGlossary));
+        }
+        if (savedAnsweredOffFlavors) {
+          setAnsweredOffFlavors(JSON.parse(savedAnsweredOffFlavors));
+        }
+        if (savedFcScore) {
+          setFcScore(JSON.parse(savedFcScore));
+        }
+
+        // Reconstruct active sessions
+        const allStyles = getBJCPStyles(language);
+        if (savedSessionStylesIds) {
+          const ids: string[] = JSON.parse(savedSessionStylesIds);
+          const reconstructed = ids.map(id => allStyles.find(s => s.id === id)).filter(Boolean) as BeerStyle[];
+          setSessionStyles(reconstructed);
+          if (savedCurrentStyleId) {
+            setCurrentStyle(reconstructed.find(s => s.id === savedCurrentStyleId) || reconstructed[0] || null);
+          } else {
+            setCurrentStyle(reconstructed[0] || null);
+          }
+        } else {
+          // Initialize default shuffle
+          const category = savedSelectedCategory || 'all';
+          const filtered = category === 'all' ? allStyles : allStyles.filter(s => s.category === category);
+          const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+          setSessionStyles(shuffled);
+          setCurrentStyle(shuffled[0] || null);
+        }
+
+        if (savedSessionGlossaryIds) {
+          const ids: string[] = JSON.parse(savedSessionGlossaryIds);
+          const reconstructed = ids.map(id => GLOSSARY_DATA.find(g => g.id === id)).filter(Boolean) as GlossaryTerm[];
+          setSessionGlossary(reconstructed);
+          if (savedCurrentGlossaryId) {
+            setCurrentGlossary(reconstructed.find(g => g.id === savedCurrentGlossaryId) || reconstructed[0] || null);
+          } else {
+            setCurrentGlossary(reconstructed[0] || null);
+          }
+        } else {
+          const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
+          setSessionGlossary(shuffled);
+          setCurrentGlossary(shuffled[0] || null);
+        }
+
+        if (savedSessionOffFlavorsIds) {
+          const ids: string[] = JSON.parse(savedSessionOffFlavorsIds);
+          const reconstructed = ids.map(id => OFF_FLAVORS_DATA.find(o => o.id === id)).filter(Boolean) as OffFlavor[];
+          setSessionOffFlavors(reconstructed);
+          if (savedCurrentOffFlavorId) {
+            setCurrentOffFlavor(reconstructed.find(o => o.id === savedCurrentOffFlavorId) || reconstructed[0] || null);
+          } else {
+            setCurrentOffFlavor(reconstructed[0] || null);
+          }
+        } else {
+          const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
+          setSessionOffFlavors(shuffled);
+          setCurrentOffFlavor(shuffled[0] || null);
+        }
+      } catch (e) {
+        console.error('Failed to load study progress:', e);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    loadSavedProgress();
+  }, []);
+
+  // Save progress dynamically whenever related states change
+  useEffect(() => {
+    if (!isInitialized) return;
+    const saveProgress = async () => {
+      try {
+        await AsyncStorage.multiSet([
+          ['@BJCPStudyBuddy:fcStudyMode', fcStudyMode],
+          ['@BJCPStudyBuddy:selectedCategory', selectedCategory],
+          ['@BJCPStudyBuddy:answeredStyles', JSON.stringify(answeredStyles)],
+          ['@BJCPStudyBuddy:answeredGlossary', JSON.stringify(answeredGlossary)],
+          ['@BJCPStudyBuddy:answeredOffFlavors', JSON.stringify(answeredOffFlavors)],
+          ['@BJCPStudyBuddy:fcScore', JSON.stringify(fcScore)],
+          ['@BJCPStudyBuddy:sessionStylesIds', JSON.stringify(sessionStyles.map(s => s.id))],
+          ['@BJCPStudyBuddy:currentStyleId', currentStyle?.id || ''],
+          ['@BJCPStudyBuddy:sessionGlossaryIds', JSON.stringify(sessionGlossary.map(g => g.id))],
+          ['@BJCPStudyBuddy:currentGlossaryId', currentGlossary?.id || ''],
+          ['@BJCPStudyBuddy:sessionOffFlavorsIds', JSON.stringify(sessionOffFlavors.map(o => o.id))],
+          ['@BJCPStudyBuddy:currentOffFlavorId', currentOffFlavor?.id || ''],
+        ]);
+      } catch (e) {
+        console.error('Failed to save study progress:', e);
+      }
+    };
+    saveProgress();
+  }, [
+    fcStudyMode,
+    selectedCategory,
+    answeredStyles,
+    answeredGlossary,
+    answeredOffFlavors,
+    fcScore,
+    sessionStyles,
+    currentStyle,
+    sessionGlossary,
+    currentGlossary,
+    sessionOffFlavors,
+    currentOffFlavor,
+    isInitialized,
+  ]);
+
+  // Dynamically sync translations when language changes, preserving shuffle order
+  useEffect(() => {
+    if (!isInitialized) return;
+    const allStyles = getBJCPStyles(language);
+    setSessionStyles(prev => {
+      const updated = prev.map(oldStyle => allStyles.find(s => s.id === oldStyle.id) || oldStyle);
+      if (currentStyle) {
+        const updatedCurrent = allStyles.find(s => s.id === currentStyle.id);
+        if (updatedCurrent) {
+          setCurrentStyle(updatedCurrent);
+        }
+      }
+      return updated;
+    });
+  }, [language]);
+
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(category);
+    const allStyles = getBJCPStyles(language);
+    const categoryStyles = category === 'all' ? allStyles : allStyles.filter(s => s.category === category);
+    const shuffled = [...categoryStyles].sort(() => Math.random() - 0.5);
+    setSessionStyles(shuffled);
+
+    const categoryAnswered = answeredStyles.filter(id => categoryStyles.some(s => s.id === id));
+    const firstUnanswered = shuffled.find(s => !categoryAnswered.includes(s.id)) || shuffled[0] || null;
+    setCurrentStyle(firstUnanswered);
+  };
+
+  const handleResetProgress = () => {
     if (fcStudyMode === 'styles') {
-      startNewFlashcardSession(selectedCategory);
+      const allStyles = getBJCPStyles(language);
+      const categoryStyles = selectedCategory === 'all' ? allStyles : allStyles.filter(s => s.category === selectedCategory);
+      const targetIds = categoryStyles.map(s => s.id);
+      
+      setAnsweredStyles(prev => prev.filter(id => !targetIds.includes(id)));
+      
+      const shuffled = [...categoryStyles].sort(() => Math.random() - 0.5);
+      setSessionStyles(shuffled);
+      setCurrentStyle(shuffled[0] || null);
     } else if (fcStudyMode === 'glossary') {
-      startGlossarySession();
+      setAnsweredGlossary([]);
+      const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
+      setSessionGlossary(shuffled);
+      setCurrentGlossary(shuffled[0] || null);
     } else {
-      startOffFlavorsSession();
+      setAnsweredOffFlavors([]);
+      const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
+      setSessionOffFlavors(shuffled);
+      setCurrentOffFlavor(shuffled[0] || null);
     }
-  }, [language, fcStudyMode]);
+    setFcScore({ correct: 0, total: 0 });
+    setIsFlipped(false);
+  };
 
   const handleFlipCard = () => setIsFlipped(!isFlipped);
+
   const handleFcAnswer = (knewIt: boolean) => {
     if (fcStudyMode === 'styles') {
       if (!currentStyle) return;
@@ -214,7 +413,29 @@ export default function FlashcardsScreen() {
       if (currentIndex + 1 < sessionStyles.length) {
         setTimeout(() => setCurrentStyle(sessionStyles[currentIndex + 1]), 150);
       } else {
-        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
+        const allStyles = getBJCPStyles(language);
+        const isGlobalCompleted = allStyles.every(s => s.id === currentStyle?.id || answeredStyles.includes(s.id));
+        
+        if (isGlobalCompleted) {
+          Alert.alert(
+            language === 'es' ? '¡Sesión Completada!' : 'Session Completed!',
+            language === 'es' 
+              ? '¡Felicidades! Has completado todos los estilos. El progreso general se reiniciará.'
+              : 'Congratulations! You have completed all styles. Your general progress will be reset.'
+          );
+          setAnsweredStyles([]);
+          setFcScore({ correct: 0, total: 0 });
+          const shuffled = [...allStyles].sort(() => Math.random() - 0.5);
+          setSessionStyles(shuffled);
+          setCurrentStyle(shuffled[0] || null);
+        } else {
+          Alert.alert(
+            language === 'es' ? 'Categoría Completada' : 'Category Completed',
+            language === 'es'
+              ? 'Has terminado de estudiar esta categoría.'
+              : 'You have finished studying this category.'
+          );
+        }
         setFcState('lobby');
       }
     } else if (fcStudyMode === 'glossary') {
@@ -222,7 +443,27 @@ export default function FlashcardsScreen() {
       if (currentIndex + 1 < sessionGlossary.length) {
         setTimeout(() => setCurrentGlossary(sessionGlossary[currentIndex + 1]), 150);
       } else {
-        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
+        const isGlobalCompleted = GLOSSARY_DATA.every(g => g.id === currentGlossary?.id || answeredGlossary.includes(g.id));
+        if (isGlobalCompleted) {
+          Alert.alert(
+            language === 'es' ? '¡Sesión Completada!' : 'Session Completed!',
+            language === 'es'
+              ? '¡Felicidades! Has completado todos los términos. El progreso general se reiniciará.'
+              : 'Congratulations! You have completed all glossary terms. Your general progress will be reset.'
+          );
+          setAnsweredGlossary([]);
+          setFcScore({ correct: 0, total: 0 });
+          const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
+          setSessionGlossary(shuffled);
+          setCurrentGlossary(shuffled[0] || null);
+        } else {
+          Alert.alert(
+            language === 'es' ? 'Sesión Completada' : 'Session Completed',
+            language === 'es'
+              ? 'Has terminado de estudiar este bloque de glosario.'
+              : 'You have finished studying this block of glossary terms.'
+          );
+        }
         setFcState('lobby');
       }
     } else {
@@ -230,7 +471,27 @@ export default function FlashcardsScreen() {
       if (currentIndex + 1 < sessionOffFlavors.length) {
         setTimeout(() => setCurrentOffFlavor(sessionOffFlavors[currentIndex + 1]), 150);
       } else {
-        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
+        const isGlobalCompleted = OFF_FLAVORS_DATA.every(o => o.id === currentOffFlavor?.id || answeredOffFlavors.includes(o.id));
+        if (isGlobalCompleted) {
+          Alert.alert(
+            language === 'es' ? '¡Sesión Completada!' : 'Session Completed!',
+            language === 'es'
+              ? '¡Felicidades! Has completado todos los off-flavors. El progreso general se reiniciará.'
+              : 'Congratulations! You have completed all off-flavors. Your general progress will be reset.'
+          );
+          setAnsweredOffFlavors([]);
+          setFcScore({ correct: 0, total: 0 });
+          const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
+          setSessionOffFlavors(shuffled);
+          setCurrentOffFlavor(shuffled[0] || null);
+        } else {
+          Alert.alert(
+            language === 'es' ? 'Sesión Completada' : 'Session Completed',
+            language === 'es'
+              ? 'Has terminado de estudiar los defectos.'
+              : 'You have finished studying the off-flavors.'
+          );
+        }
         setFcState('lobby');
       }
     }
@@ -304,7 +565,7 @@ export default function FlashcardsScreen() {
         onPress={() => setStudyMode('quiz')}
       >
         <Text style={{ color: studyMode === 'quiz' ? theme.tint : '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: Fonts.manropeBold }}>
-          Quiz Activo
+          {language === 'es' ? 'Quiz Activo' : 'Active Quiz'}
         </Text>
       </Pressable>
     </View>
@@ -326,6 +587,20 @@ export default function FlashcardsScreen() {
       activePoolCount = GLOSSARY_DATA.length;
     } else {
       activePoolCount = OFF_FLAVORS_DATA.length;
+    }
+
+    let progressCount = 0;
+    let totalCount = 0;
+    if (fcStudyMode === 'styles') {
+      const allStyles = getBJCPStyles(language);
+      totalCount = allStyles.length;
+      progressCount = answeredStyles.length;
+    } else if (fcStudyMode === 'glossary') {
+      totalCount = GLOSSARY_DATA.length;
+      progressCount = answeredGlossary.length;
+    } else {
+      totalCount = OFF_FLAVORS_DATA.length;
+      progressCount = answeredOffFlavors.length;
     }
 
     return (
@@ -371,7 +646,7 @@ export default function FlashcardsScreen() {
               
               <ScrollView style={{ maxHeight: 180, borderWidth: 1.5, borderColor: theme.border, borderRadius: Spacing.two, padding: Spacing.two, marginBottom: Spacing.three }} nestedScrollEnabled={true}>
                 <Pressable
-                  onPress={() => setSelectedCategory('all')}
+                  onPress={() => handleCategorySelect('all')}
                   style={[
                     styles.modeBtn, 
                     { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
@@ -379,15 +654,21 @@ export default function FlashcardsScreen() {
                   ]}
                 >
                   <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
+                    {answeredStyles.length === getBJCPStyles(language).length && <Text style={{ color: theme.tint }}>✓ </Text>}
                     {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
                   </Text>
                 </Pressable>
                 {categories.map((cat, idx) => {
                   const count = getBJCPStyles(language).filter(s => s.category === cat).length;
+                  const answeredCount = answeredStyles.filter(id => {
+                    const style = getBJCPStyles(language).find(s => s.id === id);
+                    return style && style.category === cat;
+                  }).length;
+                  const isCompleted = answeredCount === count;
                   return (
                     <Pressable
                       key={idx}
-                      onPress={() => setSelectedCategory(cat)}
+                      onPress={() => handleCategorySelect(cat)}
                       style={[
                         styles.modeBtn, 
                         { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
@@ -395,7 +676,7 @@ export default function FlashcardsScreen() {
                       ]}
                     >
                       <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
-                        {cat.replace(/^\d+\.\s+/, '')} ({count})
+                        {isCompleted && <Text style={{ color: theme.tint }}>✓ </Text>}{cat.replace(/^\d+\.\s+/, '')} ({answeredCount}/{count})
                       </Text>
                     </Pressable>
                   );
@@ -424,6 +705,21 @@ export default function FlashcardsScreen() {
             </View>
           )}
 
+          {/* Lobby Progress Visualization */}
+          <View style={{ marginBottom: Spacing.four, marginTop: Spacing.two, paddingHorizontal: Spacing.one }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two }}>
+              <Text style={{ fontFamily: Fonts.manropeBold, fontSize: 13, color: theme.textSecondary }}>
+                {language === 'es' ? 'Progreso Global de Estudio:' : 'Global Study Progress:'}
+              </Text>
+              <Text style={{ fontFamily: Fonts.spaceGroteskBold, fontSize: 13, color: theme.gold }}>
+                {progressCount} / {totalCount} ({Math.round((progressCount / (totalCount || 1)) * 100)}%)
+              </Text>
+            </View>
+            <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)', height: 8 }]}>
+              <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${(progressCount / (totalCount || 1)) * 100}%` }]} />
+            </View>
+          </View>
+
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: Spacing.three }}>
             <View style={{ backgroundColor: theme.background, paddingVertical: Spacing.one, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border }}>
               <Text style={{ fontFamily: Fonts.manropeBold, fontSize: 12, color: theme.textSecondary }}>
@@ -434,12 +730,14 @@ export default function FlashcardsScreen() {
 
           <Pressable 
             onPress={() => {
-              if (fcStudyMode === 'styles') {
-                startNewFlashcardSession(selectedCategory);
-              } else if (fcStudyMode === 'glossary') {
-                startGlossarySession();
-              } else {
-                startOffFlavorsSession();
+              if (progressCount === 0) {
+                if (fcStudyMode === 'styles') {
+                  handleCategorySelect(selectedCategory);
+                } else if (fcStudyMode === 'glossary') {
+                  startGlossarySession();
+                } else {
+                  startOffFlavorsSession();
+                }
               }
               setFcState('playing');
             }} 
@@ -447,11 +745,47 @@ export default function FlashcardsScreen() {
           >
             <View style={styles.btnContentRow}>
               <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
-                {language === 'es' ? 'Comenzar Estudio' : 'Start Study'}
+                {progressCount > 0 
+                  ? (language === 'es' ? 'Reanudar Estudio' : 'Resume Study')
+                  : (language === 'es' ? 'Comenzar Estudio' : 'Start Study')}
               </Text>
               <QuizIcon name="arrow" color="#FFF" size={18} />
             </View>
           </Pressable>
+
+          {/* Manual Reset Button */}
+          {progressCount > 0 && (
+            <Pressable 
+              onPress={() => {
+                Alert.alert(
+                  language === 'es' ? 'Reiniciar Progreso' : 'Reset Progress',
+                  language === 'es' 
+                    ? '¿Estás seguro de que deseas reiniciar tu progreso en este tema?'
+                    : 'Are you sure you want to reset your progress for this subject?',
+                  [
+                    { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                    { text: language === 'es' ? 'Reiniciar' : 'Reset', style: 'destructive', onPress: handleResetProgress }
+                  ]
+                );
+              }}
+              style={({ pressed }) => [
+                {
+                  paddingVertical: Spacing.two,
+                  backgroundColor: pressed ? 'rgba(242, 184, 36, 0.12)' : 'transparent',
+                  borderColor: theme.gold,
+                  borderWidth: 1.5,
+                  borderRadius: Spacing.two,
+                  alignItems: 'center',
+                  marginTop: Spacing.three,
+                  width: '100%',
+                }
+              ]}
+            >
+              <Text style={{ color: theme.gold, fontFamily: Fonts.manropeBold, fontSize: 13, fontWeight: '700' }}>
+                {language === 'es' ? '🔄 Reiniciar Progreso del Tema' : '🔄 Reset Topic Progress'}
+              </Text>
+            </Pressable>
+          )}
         </ThemedView>
       </ScrollView>
     );
@@ -462,18 +796,18 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
-          <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
+          <Text style={[styles.cardBadge, { color: theme.tint }]}>{language === 'es' ? '¿QUÉ ESTILO SOY?' : 'WHAT STYLE AM I?'}</Text>
+          <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>{language === 'es' ? 'Cat:' : 'Cat:'} {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
         </View>
         
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
           <View style={styles.questionSection}>
-            <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Impresión General:' : 'Overall Impression:'}</Text>
             <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
           </View>
           
           <View style={styles.vitalCluesContainer}>
-            <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
+            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Estadísticas Vitales:' : 'Vital Statistics:'}</Text>
             <View style={styles.cluesRow}>
               <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
               <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
@@ -482,13 +816,13 @@ export default function FlashcardsScreen() {
           </View>
 
           <View style={{ marginTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }}>
-            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
+            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Pistas Adicionales:' : 'Additional Clues:'}</Text>
             
             {/* Aroma Hint */}
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               {revealedClues.aroma ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aroma:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Aroma:' : 'Aroma:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.aroma}</Text>
                 </View>
               ) : (
@@ -505,7 +839,7 @@ export default function FlashcardsScreen() {
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               {revealedClues.appearance ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aspecto:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Aspecto:' : 'Appearance:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.appearance}</Text>
                 </View>
               ) : (
@@ -522,7 +856,7 @@ export default function FlashcardsScreen() {
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               {revealedClues.flavor ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sabor:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sabor:' : 'Flavor:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.flavor}</Text>
                 </View>
               ) : (
@@ -539,7 +873,7 @@ export default function FlashcardsScreen() {
             <View style={{ paddingBottom: Spacing.one }}>
               {revealedClues.mouthfeel ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación en Boca:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación en Boca:' : 'Mouthfeel:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.mouthfeel}</Text>
                 </View>
               ) : (
@@ -562,7 +896,7 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
+          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'ESTILO REVELADO' : 'STYLE REVEALED'}</Text>
           <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
         </View>
         
@@ -575,14 +909,14 @@ export default function FlashcardsScreen() {
           <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
             {/* Impresión General */}
             <View>
-              <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Impresión General:' : 'Overall Impression:'}</Text>
               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.overallImpression}</Text>
             </View>
 
             {/* Aroma */}
             {currentStyle.aroma ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Aroma:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Aroma:' : 'Aroma:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.aroma}</Text>
               </View>
             ) : null}
@@ -590,7 +924,7 @@ export default function FlashcardsScreen() {
             {/* Aspecto */}
             {currentStyle.appearance ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Aspecto:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Aspecto:' : 'Appearance:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.appearance}</Text>
               </View>
             ) : null}
@@ -598,7 +932,7 @@ export default function FlashcardsScreen() {
             {/* Sabor */}
             {currentStyle.flavor ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Sabor:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sabor:' : 'Flavor:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.flavor}</Text>
               </View>
             ) : null}
@@ -606,7 +940,7 @@ export default function FlashcardsScreen() {
             {/* Sensación en Boca */}
             {currentStyle.mouthfeel ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Sensación en Boca:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sensación en Boca:' : 'Mouthfeel:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.mouthfeel}</Text>
               </View>
             ) : null}
@@ -614,7 +948,7 @@ export default function FlashcardsScreen() {
             {/* Comparación de Estilo */}
             {currentStyle.comparison ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Comparación de Estilo:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Comparación de Estilo:' : 'Style Comparison:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.comparison}</Text>
               </View>
             ) : null}
@@ -622,7 +956,7 @@ export default function FlashcardsScreen() {
             {/* Historia */}
             {currentStyle.history ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Historia:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Historia:' : 'History:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.history}</Text>
               </View>
             ) : null}
@@ -630,14 +964,14 @@ export default function FlashcardsScreen() {
             {/* Ingredientes */}
             {currentStyle.ingredients ? (
               <View>
-                <Text style={styles.cardSectionLabel}>Ingredientes Característicos:</Text>
+                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Ingredientes Característicos:' : 'Characteristic Ingredients:'}</Text>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.ingredients}</Text>
               </View>
             ) : null}
 
             {/* Ejemplos Comerciales */}
             <View style={{ marginBottom: Spacing.three }}>
-              <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
+              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Ejemplos Comerciales:' : 'Commercial Examples:'}</Text>
               <View style={styles.examplesContainer}>
                 {currentStyle.commercialExamples.map((ex, i) => (
                   <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
@@ -657,7 +991,7 @@ export default function FlashcardsScreen() {
     if (!currentGlossary) return null;
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.four }}>
-        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>¿QUÉ SIGNIFICA ESTE TÉRMINO?</Text>
+        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>{language === 'es' ? '¿QUÉ SIGNIFICA ESTE TÉRMINO?' : 'WHAT DOES THIS TERM MEAN?'}</Text>
         <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center', paddingHorizontal: Spacing.three }}>
           {language === 'es' ? currentGlossary.name_es : currentGlossary.name_en}
         </Text>
@@ -675,7 +1009,7 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardBadge, { color: theme.success }]}>TÉRMINO REVELADO</Text>
+          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'TÉRMINO REVELADO' : 'TERM REVEALED'}</Text>
         </View>
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
           <View style={styles.answerHeader}>
@@ -700,7 +1034,7 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ DEFECTO ES?</Text>
+          <Text style={[styles.cardBadge, { color: theme.tint }]}>{language === 'es' ? '¿QUÉ DEFECTO ES?' : 'WHAT OFF-FLAVOR IS IT?'}</Text>
         </View>
         
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
@@ -711,13 +1045,13 @@ export default function FlashcardsScreen() {
           </View>
 
           <View style={{ gap: Spacing.two, paddingBottom: Spacing.two }}>
-            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
+            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Pistas Adicionales:' : 'Additional Clues:'}</Text>
 
             {/* Sensation Hint */}
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               {revealedOffClues.sensation ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación Organoléptica:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
                 </View>
               ) : (
@@ -734,7 +1068,7 @@ export default function FlashcardsScreen() {
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
               {revealedOffClues.causes ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Causas Comunes:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
                 </View>
               ) : (
@@ -751,7 +1085,7 @@ export default function FlashcardsScreen() {
             <View style={{ paddingBottom: Spacing.one }}>
               {revealedOffClues.prevention ? (
                 <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Prevención:</Text>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
                 </View>
               ) : (
@@ -779,7 +1113,7 @@ export default function FlashcardsScreen() {
     return (
       <>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardBadge, { color: theme.success }]}>DEFECTO REVELADO</Text>
+          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'DEFECTO REVELADO' : 'OFF-FLAVOR REVEALED'}</Text>
         </View>
         
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
@@ -789,17 +1123,17 @@ export default function FlashcardsScreen() {
 
           <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
             <View>
-              <Text style={styles.cardSectionLabel}>Sensación Organoléptica:</Text>
+              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{sensation}</Text>
             </View>
 
             <View>
-              <Text style={styles.cardSectionLabel}>Causas Comunes:</Text>
+              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{causes}</Text>
             </View>
 
             <View>
-              <Text style={styles.cardSectionLabel}>Prevención:</Text>
+              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{prevention}</Text>
             </View>
           </View>
@@ -850,7 +1184,7 @@ export default function FlashcardsScreen() {
             <Text style={styles.title}>{language === 'es' ? 'Estudio' : 'Study'}</Text>
           </View>
           <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
-            Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{progressCount}</Text>/{totalCount}
+            {language === 'es' ? 'Progreso:' : 'Progress:'} <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{progressCount}</Text>/{totalCount}
           </Text>
         </View>
 
@@ -914,13 +1248,13 @@ export default function FlashcardsScreen() {
                 <Pressable onPress={() => handleFcAnswer(false)} style={[styles.answerBtn, { backgroundColor: theme.gold }]}>
                   <View style={styles.btnContentRow}>
                     <QuizIcon name="cross" color={theme.text} size={16} />
-                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }}>Lo dudé</Text>
+                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Lo dudé' : 'Unsure'}</Text>
                   </View>
                 </Pressable>
                 <Pressable onPress={() => handleFcAnswer(true)} style={[styles.answerBtn, { backgroundColor: theme.success }]}>
                   <View style={styles.btnContentRow}>
                     <QuizIcon name="check" color="#FFF" size={16} />
-                    <Text style={[styles.btnTextWhite, { fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }]}>¡Lo sabía!</Text>
+                    <Text style={[styles.btnTextWhite, { fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }]}>{language === 'es' ? '¡Lo sabía!' : 'Knew it!'}</Text>
                   </View>
                 </Pressable>
               </View>
@@ -936,13 +1270,13 @@ export default function FlashcardsScreen() {
       <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
         <Text style={{ textAlign: 'center', marginBottom: Spacing.four, fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>BJCP Quiz</Text>
         
-        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Modo de Estudio:</Text>
+        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Modo de Estudio:' : 'Study Mode:'}</Text>
         <View style={styles.modesContainer}>
           {[
-            { id: 'mixed', label: 'Mixto (Todos)', desc: 'Examen simulado integral', icon: 'mixed' },
-            { id: 'styles', label: 'Estilos', desc: 'Adivina estilos, IBU, ABV', icon: 'styles' },
-            { id: 'glossary', label: 'Glosario', desc: 'Términos técnicos', icon: 'glossary' },
-            { id: 'offflavors', label: 'Off-Flavors', desc: 'Defectos y causas', icon: 'offflavors' },
+            { id: 'mixed', label: language === 'es' ? 'Mixto (Todos)' : 'Mixed (All)', desc: language === 'es' ? 'Examen simulado integral' : 'Comprehensive mock exam', icon: 'mixed' },
+            { id: 'styles', label: language === 'es' ? 'Estilos' : 'Styles', desc: language === 'es' ? 'Adivina estilos, IBU, ABV' : 'Guess styles, IBU, ABV', icon: 'styles' },
+            { id: 'glossary', label: language === 'es' ? 'Glosario' : 'Glossary', desc: language === 'es' ? 'Términos técnicos' : 'Technical terms', icon: 'glossary' },
+            { id: 'offflavors', label: language === 'es' ? 'Off-Flavors' : 'Off-Flavors', desc: language === 'es' ? 'Defectos y causas' : 'Defects and causes', icon: 'offflavors' },
           ].map(m => (
             <Pressable 
               key={m.id}
@@ -958,7 +1292,7 @@ export default function FlashcardsScreen() {
           ))}
         </View>
 
-        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Cantidad de Preguntas:</Text>
+        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Cantidad de Preguntas:' : 'Number of Questions:'}</Text>
         <View style={styles.countContainer}>
           {[5, 10, 20, 50].map(c => (
             <Pressable
@@ -973,7 +1307,7 @@ export default function FlashcardsScreen() {
 
         <Pressable onPress={startQuiz} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
           <View style={styles.btnContentRow}>
-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Comenzar Quiz</Text>
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Comenzar Quiz' : 'Start Quiz'}</Text>
             <QuizIcon name="arrow" color="#FFF" size={18} />
           </View>
         </Pressable>
@@ -988,10 +1322,10 @@ export default function FlashcardsScreen() {
     return (
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.quizHeader}>
-          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Pregunta {currentQuestionIndex + 1} / {questions.length}</Text>
+          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Pregunta' : 'Question'} {currentQuestionIndex + 1} / {questions.length}</Text>
           <View style={styles.streakBadge}>
             <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
-            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Racha: {streak}</Text>
+            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Racha:' : 'Streak:'} {streak}</Text>
           </View>
         </View>
         
@@ -1008,7 +1342,7 @@ export default function FlashcardsScreen() {
               <View style={styles.quizCategoryHeader}>
                 <QuizIcon name={q.category} color={theme.gold} size={16} />
                 <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
-                  {q.category === 'mixed' ? 'General' : q.category}
+                  {q.category === 'mixed' ? (language === 'es' ? 'General' : 'General') : (q.category === 'styles' ? (language === 'es' ? 'Estilos' : 'Styles') : q.category === 'glossary' ? (language === 'es' ? 'Glosario' : 'Glossary') : q.category === 'offflavors' ? (language === 'es' ? 'Off-Flavors' : 'Off-Flavors') : q.category)}
                 </Text>
               </View>
               <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.tint }}>
@@ -1113,7 +1447,9 @@ export default function FlashcardsScreen() {
             <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.gold }]}>
               <View style={styles.btnContentRow}>
                 <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
-                  {currentQuestionIndex + 1 === questions.length ? 'Ver Resultados' : 'Siguiente'}
+                  {currentQuestionIndex + 1 === questions.length 
+                    ? (language === 'es' ? 'Ver Resultados' : 'View Results') 
+                    : (language === 'es' ? 'Siguiente' : 'Next')}
                 </Text>
                 <QuizIcon name={currentQuestionIndex + 1 === questions.length ? 'award' : 'arrow'} color={theme.text} size={16} />
               </View>
@@ -1131,25 +1467,29 @@ export default function FlashcardsScreen() {
         <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border, alignItems: 'center', paddingVertical: Spacing.six }]}>
           <QuizIcon name="award" color={percentage >= 80 ? theme.success : theme.tint} size={64} />
           
-          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>Resultados Finales</Text>
+          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>{language === 'es' ? 'Resultados Finales' : 'Final Results'}</Text>
           
           <Text style={{ fontSize: 48, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: percentage >= 80 ? theme.success : theme.tint, marginVertical: Spacing.two }}>
             {percentage}%
           </Text>
           
           <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.textSecondary, marginBottom: Spacing.four }}>
-            {quizScore} de {questions.length} respuestas correctas
+            {language === 'es' 
+              ? `${quizScore} de ${questions.length} respuestas correctas` 
+              : `${quizScore} of ${questions.length} correct answers`}
           </Text>
           
           <View style={[styles.finalStreakBadge, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
             <QuizIcon name="fire" color={theme.gold} size={24} />
             <Text style={{ fontWeight: '700', fontSize: 16, color: theme.text, fontFamily: Fonts.manropeBold }}>
-              Racha Máxima: {maxStreak}
+              {language === 'es' ? 'Racha Máxima:' : 'Max Streak:'} {maxStreak}
             </Text>
           </View>
 
           <Pressable onPress={() => setQuizState('lobby')} style={[styles.startQuizBtn, { backgroundColor: theme.tint, width: '100%', marginTop: Spacing.five }]}>
-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Volver al Menú</Text>
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
+              {language === 'es' ? 'Volver al Menú' : 'Back to Menu'}
+            </Text>
           </Pressable>
         </ThemedView>
       </ScrollView>

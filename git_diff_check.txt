@@ -1,0 +1,1122 @@
+diff --git a/src/app/flashcards.tsx b/src/app/flashcards.tsx
+index 5967fd1..7f0fcc4 100644
+--- a/src/app/flashcards.tsx
++++ b/src/app/flashcards.tsx
+@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
+ import { StyleSheet, Pressable, View, ScrollView, Alert, Text } from 'react-native';
+ import { SafeAreaView } from 'react-native-safe-area-context';
+ import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
++import { useRouter } from 'expo-router';
+ 
+ import { ThemedText } from '@/components/themed-text';
+ import { ThemedView } from '@/components/themed-view';
+@@ -9,6 +10,8 @@ import { BottomTabInset, MaxContentWidth, Spacing, Colors, Fonts } from '@/const
+ import { useTheme } from '@/hooks/use-theme';
+ import { useTranslation } from '@/context/language-context';
+ import { BeerStyle, getBJCPStyles } from '@/data/bjcp2021';
++import { GLOSSARY_DATA, GlossaryTerm } from '@/data/glossary';
++import { OFF_FLAVORS_DATA, OffFlavor } from '@/data/offflavors';
+ import { generateQuiz, QuizMode, QuizQuestion } from '@/data/quiz-generator';
+ 
+ // ==========================================
+@@ -50,6 +53,7 @@ type FcState = 'lobby' | 'playing';
+ export default function FlashcardsScreen() {
+   const theme = useTheme();
+   const { language } = useTranslation();
++  const router = useRouter();
+ 
+   // Mode Selection
+   const [studyMode, setStudyMode] = useState<StudyMode>('quiz');
+@@ -58,10 +62,11 @@ export default function FlashcardsScreen() {
+   // FLASHCARDS STATE
+   // ==========================================
+   const [fcState, setFcState] = useState<FcState>('lobby');
++  const [fcStudyMode, setFcStudyMode] = useState<'styles' | 'glossary' | 'offflavors'>('styles');
+   const [selectedCategory, setSelectedCategory] = useState<string>('all');
++  
++  // Styles Mode State
+   const [currentStyle, setCurrentStyle] = useState<BeerStyle | null>(null);
+-  const [isFlipped, setIsFlipped] = useState(false);
+-  const [fcScore, setFcScore] = useState({ correct: 0, total: 0 });
+   const [sessionStyles, setSessionStyles] = useState<BeerStyle[]>([]);
+   const [answeredStyles, setAnsweredStyles] = useState<string[]>([]);
+   const [revealedClues, setRevealedClues] = useState({
+@@ -71,6 +76,24 @@ export default function FlashcardsScreen() {
+     mouthfeel: false,
+   });
+ 
++  // Glossary Mode State
++  const [sessionGlossary, setSessionGlossary] = useState<GlossaryTerm[]>([]);
++  const [currentGlossary, setCurrentGlossary] = useState<GlossaryTerm | null>(null);
++  const [answeredGlossary, setAnsweredGlossary] = useState<string[]>([]);
++
++  // Off-Flavors Mode State
++  const [sessionOffFlavors, setSessionOffFlavors] = useState<OffFlavor[]>([]);
++  const [currentOffFlavor, setCurrentOffFlavor] = useState<OffFlavor | null>(null);
++  const [answeredOffFlavors, setAnsweredOffFlavors] = useState<string[]>([]);
++  const [revealedOffClues, setRevealedOffClues] = useState({
++    sensation: false,
++    causes: false,
++    prevention: false,
++  });
++
++  const [isFlipped, setIsFlipped] = useState(false);
++  const [fcScore, setFcScore] = useState({ correct: 0, total: 0 });
++
+   // ==========================================
+   // QUIZ STATE
+   // ==========================================
+@@ -106,19 +129,66 @@ export default function FlashcardsScreen() {
+     });
+   };
+ 
++  const startGlossarySession = () => {
++    const shuffled = [...GLOSSARY_DATA].sort(() => Math.random() - 0.5);
++    setSessionGlossary(shuffled);
++    setCurrentGlossary(shuffled[0] || null);
++    setIsFlipped(false);
++    setFcScore({ correct: 0, total: 0 });
++    setAnsweredGlossary([]);
++  };
++
++  const startOffFlavorsSession = () => {
++    const shuffled = [...OFF_FLAVORS_DATA].sort(() => Math.random() - 0.5);
++    setSessionOffFlavors(shuffled);
++    setCurrentOffFlavor(shuffled[0] || null);
++    setIsFlipped(false);
++    setFcScore({ correct: 0, total: 0 });
++    setAnsweredOffFlavors([]);
++    setRevealedOffClues({
++      sensation: false,
++      causes: false,
++      prevention: false,
++    });
++  };
++
+   useEffect(() => {
+-    startNewFlashcardSession(selectedCategory);
+-  }, [language]);
++    if (fcStudyMode === 'styles') {
++      startNewFlashcardSession(selectedCategory);
++    } else if (fcStudyMode === 'glossary') {
++      startGlossarySession();
++    } else {
++      startOffFlavorsSession();
++    }
++  }, [language, fcStudyMode]);
+ 
+   const handleFlipCard = () => setIsFlipped(!isFlipped);
+   const handleFcAnswer = (knewIt: boolean) => {
+-    if (!currentStyle) return;
+-    if (answeredStyles.includes(currentStyle.id)) {
+-      loadNextFcCard();
+-      return;
++    if (fcStudyMode === 'styles') {
++      if (!currentStyle) return;
++      if (answeredStyles.includes(currentStyle.id)) {
++        loadNextFcCard();
++        return;
++      }
++      setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
++      setAnsweredStyles(prev => [...prev, currentStyle.id]);
++    } else if (fcStudyMode === 'glossary') {
++      if (!currentGlossary) return;
++      if (answeredGlossary.includes(currentGlossary.id)) {
++        loadNextFcCard();
++        return;
++      }
++      setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
++      setAnsweredGlossary(prev => [...prev, currentGlossary.id]);
++    } else {
++      if (!currentOffFlavor) return;
++      if (answeredOffFlavors.includes(currentOffFlavor.id)) {
++        loadNextFcCard();
++        return;
++      }
++      setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
++      setAnsweredOffFlavors(prev => [...prev, currentOffFlavor.id]);
+     }
+-    setFcScore(prev => ({ correct: prev.correct + (knewIt ? 1 : 0), total: prev.total + 1 }));
+-    setAnsweredStyles(prev => [...prev, currentStyle.id]);
+     // Auto-advance to next card after a brief delay
+     setTimeout(() => {
+       loadNextFcCard();
+@@ -133,12 +203,36 @@ export default function FlashcardsScreen() {
+       flavor: false,
+       mouthfeel: false,
+     });
+-    const currentIndex = sessionStyles.findIndex(s => s.id === currentStyle?.id);
+-    if (currentIndex + 1 < sessionStyles.length) {
+-      setTimeout(() => setCurrentStyle(sessionStyles[currentIndex + 1]), 150);
++    setRevealedOffClues({
++      sensation: false,
++      causes: false,
++      prevention: false,
++    });
++
++    if (fcStudyMode === 'styles') {
++      const currentIndex = sessionStyles.findIndex(s => s.id === currentStyle?.id);
++      if (currentIndex + 1 < sessionStyles.length) {
++        setTimeout(() => setCurrentStyle(sessionStyles[currentIndex + 1]), 150);
++      } else {
++        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
++        setFcState('lobby');
++      }
++    } else if (fcStudyMode === 'glossary') {
++      const currentIndex = sessionGlossary.findIndex(s => s.id === currentGlossary?.id);
++      if (currentIndex + 1 < sessionGlossary.length) {
++        setTimeout(() => setCurrentGlossary(sessionGlossary[currentIndex + 1]), 150);
++      } else {
++        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
++        setFcState('lobby');
++      }
+     } else {
+-      Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
+-      setFcState('lobby');
++      const currentIndex = sessionOffFlavors.findIndex(s => s.id === currentOffFlavor?.id);
++      if (currentIndex + 1 < sessionOffFlavors.length) {
++        setTimeout(() => setCurrentOffFlavor(sessionOffFlavors[currentIndex + 1]), 150);
++      } else {
++        Alert.alert(language === 'es' ? '¡Sesión Completada!' : 'Session Completed!');
++        setFcState('lobby');
++      }
+     }
+   };
+ 
+@@ -223,9 +317,16 @@ export default function FlashcardsScreen() {
+       return numA - numB;
+     });
+ 
+-    const activePoolCount = selectedCategory === 'all' 
+-      ? getBJCPStyles(language).length 
+-      : getBJCPStyles(language).filter(s => s.category === selectedCategory).length;
++    let activePoolCount = 0;
++    if (fcStudyMode === 'styles') {
++      activePoolCount = selectedCategory === 'all' 
++        ? getBJCPStyles(language).length 
++        : getBJCPStyles(language).filter(s => s.category === selectedCategory).length;
++    } else if (fcStudyMode === 'glossary') {
++      activePoolCount = GLOSSARY_DATA.length;
++    } else {
++      activePoolCount = OFF_FLAVORS_DATA.length;
++    }
+ 
+     return (
+       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+@@ -235,46 +336,93 @@ export default function FlashcardsScreen() {
+           </Text>
+           <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, textAlign: 'center', marginBottom: Spacing.four, lineHeight: 18 }}>
+             {language === 'es' 
+-              ? 'Practica el reconocimiento activo de estilos. Intenta adivinar usando la Impresión General y revela pistas de Aroma, Sabor o Aspecto si es necesario.'
+-              : 'Practice active recall of beer styles. Try to guess using the Overall Impression and reveal Aroma, Flavor, or Appearance hints as needed.'}
++              ? 'Practica el reconocimiento activo de estilos, terminología o defectos sensoriales.'
++              : 'Practice active recall of beer styles, terminology, or off-flavors.'}
+           </Text>
+ 
+           <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>
+-            {language === 'es' ? 'Seleccionar Categoría:' : 'Select Category:'}
++            {language === 'es' ? 'Tema a Estudiar:' : 'Subject to Study:'}
+           </Text>
+-          
+-          <ScrollView style={{ maxHeight: 220, borderWidth: 1.5, borderColor: theme.border, borderRadius: Spacing.two, padding: Spacing.two, marginBottom: Spacing.three }} nestedScrollEnabled={true}>
+-            <Pressable
+-              onPress={() => setSelectedCategory('all')}
+-              style={[
+-                styles.modeBtn, 
+-                { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+-                selectedCategory === 'all' && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
+-              ]}
+-            >
+-              <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
+-                {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
++          <View style={{ flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.four }}>
++            {[
++              { id: 'styles', label: language === 'es' ? 'Estilos' : 'Styles' },
++              { id: 'glossary', label: language === 'es' ? 'Glosario' : 'Glossary' },
++              { id: 'offflavors', label: 'Off-Flavors' }
++            ].map(m => (
++              <Pressable
++                key={m.id}
++                onPress={() => setFcStudyMode(m.id as any)}
++                style={[
++                  styles.countBtn,
++                  { borderColor: theme.border, flex: 1 },
++                  fcStudyMode === m.id && { backgroundColor: theme.gold, borderColor: theme.gold }
++                ]}
++              >
++                <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 13 }}>{m.label}</Text>
++              </Pressable>
++            ))}
++          </View>
++
++          {fcStudyMode === 'styles' && (
++            <>
++              <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>
++                {language === 'es' ? 'Seleccionar Categoría:' : 'Select Category:'}
+               </Text>
+-            </Pressable>
+-            {categories.map((cat, idx) => {
+-              const count = getBJCPStyles(language).filter(s => s.category === cat).length;
+-              return (
++              
++              <ScrollView style={{ maxHeight: 180, borderWidth: 1.5, borderColor: theme.border, borderRadius: Spacing.two, padding: Spacing.two, marginBottom: Spacing.three }} nestedScrollEnabled={true}>
+                 <Pressable
+-                  key={idx}
+-                  onPress={() => setSelectedCategory(cat)}
++                  onPress={() => setSelectedCategory('all')}
+                   style={[
+                     styles.modeBtn, 
+                     { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
+-                    selectedCategory === cat && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
++                    selectedCategory === 'all' && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
+                   ]}
+                 >
+                   <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
+-                    {cat.replace(/^\d+\.\s+/, '')} ({count})
++                    {language === 'es' ? '✨ Todos los Estilos' : '✨ All Styles'} ({getBJCPStyles(language).length})
+                   </Text>
+                 </Pressable>
+-              );
+-            })}
+-          </ScrollView>
++                {categories.map((cat, idx) => {
++                  const count = getBJCPStyles(language).filter(s => s.category === cat).length;
++                  return (
++                    <Pressable
++                      key={idx}
++                      onPress={() => setSelectedCategory(cat)}
++                      style={[
++                        styles.modeBtn, 
++                        { borderColor: 'transparent', paddingVertical: Spacing.two, marginBottom: Spacing.one }, 
++                        selectedCategory === cat && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }
++                      ]}
++                    >
++                      <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 13, paddingHorizontal: Spacing.two }}>
++                        {cat.replace(/^\d+\.\s+/, '')} ({count})
++                      </Text>
++                    </Pressable>
++                  );
++                })}
++              </ScrollView>
++            </>
++          )}
++
++          {fcStudyMode === 'glossary' && (
++            <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>
++                {language === 'es' 
++                  ? 'Aprende los términos técnicos más importantes de la guía BJCP (atenuación, cuerpo, ésteres, fenoles, etc.). En el frente verás el término, al revelar verás su definición completa.'
++                  : 'Study key technical terminology from the BJCP guidelines (attenuation, body, esters, phenols, etc.). The front shows the term; the back reveals its complete definition.'}
++              </Text>
++            </View>
++          )}
++
++          {fcStudyMode === 'offflavors' && (
++            <View style={{ backgroundColor: theme.background, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.four }}>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>
++                {language === 'es' 
++                  ? 'Domina los perfiles de defectos sensoriales habituales en la cerveza. Utiliza las pistas progresivas en el frente para recordar sus sensaciones y causas antes de revelar el contenido.'
++                  : 'Master common off-flavor sensory profiles in beer. Use progressive clues on the front of the card to recall their sensation, cause, and prevention before flipping the card.'}
++              </Text>
++            </View>
++          )}
+ 
+           <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: Spacing.three }}>
+             <View style={{ backgroundColor: theme.background, paddingVertical: Spacing.one, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border }}>
+@@ -286,7 +434,13 @@ export default function FlashcardsScreen() {
+ 
+           <Pressable 
+             onPress={() => {
+-              startNewFlashcardSession(selectedCategory);
++              if (fcStudyMode === 'styles') {
++                startNewFlashcardSession(selectedCategory);
++              } else if (fcStudyMode === 'glossary') {
++                startGlossarySession();
++              } else {
++                startOffFlavorsSession();
++              }
+               setFcState('playing');
+             }} 
+             style={[styles.startQuizBtn, { backgroundColor: theme.tint, marginTop: 0 }]}
+@@ -303,13 +457,382 @@ export default function FlashcardsScreen() {
+     );
+   };
+ 
++  const renderStylesFront = () => {
++    if (!currentStyle) return null;
++    return (
++      <>
++        <View style={styles.cardHeader}>
++          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
++          <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
++        </View>
++        
++        <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
++          <View style={styles.questionSection}>
++            <Text style={styles.cardSectionLabel}>Impresión General:</Text>
++            <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
++          </View>
++          
++          <View style={styles.vitalCluesContainer}>
++            <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
++            <View style={styles.cluesRow}>
++              <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
++              <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
++              <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</Text></View>
++            </View>
++          </View>
++
++          <View style={{ marginTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }}>
++            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
++            
++            {/* Aroma Hint */}
++            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
++              {revealedClues.aroma ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aroma:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.aroma}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedClues(prev => ({ ...prev, aroma: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aroma' : 'Reveal Aroma'}</Text>
++                </Pressable>
++              )}
++            </View>
++
++            {/* Aspecto Hint */}
++            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
++              {revealedClues.appearance ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aspecto:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.appearance}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedClues(prev => ({ ...prev, appearance: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aspecto' : 'Reveal Appearance'}</Text>
++                </Pressable>
++              )}
++            </View>
++
++            {/* Sabor Hint */}
++            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
++              {revealedClues.flavor ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sabor:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.flavor}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedClues(prev => ({ ...prev, flavor: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sabor' : 'Reveal Flavor'}</Text>
++                </Pressable>
++              )}
++            </View>
++
++            {/* Sensación en Boca Hint */}
++            <View style={{ paddingBottom: Spacing.one }}>
++              {revealedClues.mouthfeel ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación en Boca:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.mouthfeel}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedClues(prev => ({ ...prev, mouthfeel: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sensación en Boca' : 'Reveal Mouthfeel'}</Text>
++                </Pressable>
++              )}
++            </View>
++          </View>
++        </ScrollView>
++      </>
++    );
++  };
++
++  const renderStylesBack = () => {
++    if (!currentStyle) return null;
++    return (
++      <>
++        <View style={styles.cardHeader}>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
++          <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
++        </View>
++        
++        <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
++          <View style={styles.answerHeader}>
++            <Text style={styles.answerStyleName}>{currentStyle.name}</Text>
++            <Text style={{ fontSize: 13, fontFamily: Fonts.spaceGrotesk, color: theme.textSecondary, textAlign: 'center' }}>{currentStyle.category}</Text>
++          </View>
++
++          <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
++            {/* Impresión General */}
++            <View>
++              <Text style={styles.cardSectionLabel}>Impresión General:</Text>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.overallImpression}</Text>
++            </View>
++
++            {/* Aroma */}
++            {currentStyle.aroma ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Aroma:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.aroma}</Text>
++              </View>
++            ) : null}
++
++            {/* Aspecto */}
++            {currentStyle.appearance ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Aspecto:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.appearance}</Text>
++              </View>
++            ) : null}
++
++            {/* Sabor */}
++            {currentStyle.flavor ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Sabor:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.flavor}</Text>
++              </View>
++            ) : null}
++
++            {/* Sensación en Boca */}
++            {currentStyle.mouthfeel ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Sensación en Boca:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.mouthfeel}</Text>
++              </View>
++            ) : null}
++
++            {/* Comparación de Estilo */}
++            {currentStyle.comparison ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Comparación de Estilo:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.comparison}</Text>
++              </View>
++            ) : null}
++
++            {/* Historia */}
++            {currentStyle.history ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Historia:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.history}</Text>
++              </View>
++            ) : null}
++
++            {/* Ingredientes */}
++            {currentStyle.ingredients ? (
++              <View>
++                <Text style={styles.cardSectionLabel}>Ingredientes Característicos:</Text>
++                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.ingredients}</Text>
++              </View>
++            ) : null}
++
++            {/* Ejemplos Comerciales */}
++            <View style={{ marginBottom: Spacing.three }}>
++              <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
++              <View style={styles.examplesContainer}>
++                {currentStyle.commercialExamples.map((ex, i) => (
++                  <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
++                    <QuizIcon name="styles" color={theme.textSecondary} size={12} />
++                    <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.text }}>{ex}</Text>
++                  </View>
++                ))}
++              </View>
++            </View>
++          </View>
++        </ScrollView>
++      </>
++    );
++  };
++
++  const renderGlossaryFront = () => {
++    if (!currentGlossary) return null;
++    return (
++      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.four }}>
++        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>¿QUÉ SIGNIFICA ESTE TÉRMINO?</Text>
++        <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center', paddingHorizontal: Spacing.three }}>
++          {language === 'es' ? currentGlossary.name_es : currentGlossary.name_en}
++        </Text>
++        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, marginTop: Spacing.five, textAlign: 'center', opacity: 0.8 }}>
++          {language === 'es' ? 'Toca la ficha para revelar definición' : 'Tap card to reveal definition'}
++        </Text>
++      </View>
++    );
++  };
++
++  const renderGlossaryBack = () => {
++    if (!currentGlossary) return null;
++    const name = language === 'es' ? currentGlossary.name_es : currentGlossary.name_en;
++    const def = language === 'es' ? currentGlossary.definition_es : currentGlossary.definition_en;
++    return (
++      <>
++        <View style={styles.cardHeader}>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>TÉRMINO REVELADO</Text>
++        </View>
++        <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
++          <View style={styles.answerHeader}>
++            <Text style={styles.answerStyleName}>{name}</Text>
++          </View>
++          <View style={{ marginTop: Spacing.three, paddingBottom: Spacing.two }}>
++            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Definición:' : 'Definition:'}</Text>
++            <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.text, lineHeight: 22 }}>{def}</Text>
++          </View>
++        </ScrollView>
++      </>
++    );
++  };
++
++  const renderOffFlavorsFront = () => {
++    if (!currentOffFlavor) return null;
++    const name = language === 'es' ? currentOffFlavor.name_es : currentOffFlavor.name_en;
++    const sensation = language === 'es' ? currentOffFlavor.sensation_es : currentOffFlavor.sensation_en;
++    const causes = language === 'es' ? currentOffFlavor.causes_es : currentOffFlavor.causes_en;
++    const prevention = language === 'es' ? currentOffFlavor.prevention_es : currentOffFlavor.prevention_en;
++
++    return (
++      <>
++        <View style={styles.cardHeader}>
++          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ DEFECTO ES?</Text>
++        </View>
++        
++        <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
++          <View style={[styles.answerHeader, { marginBottom: Spacing.four }]}>
++            <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center' }}>
++              {name}
++            </Text>
++          </View>
++
++          <View style={{ gap: Spacing.two, paddingBottom: Spacing.two }}>
++            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
++
++            {/* Sensation Hint */}
++            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
++              {revealedOffClues.sensation ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación Organoléptica:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedOffClues(prev => ({ ...prev, sensation: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sensación' : 'Reveal Sensation'}</Text>
++                </Pressable>
++              )}
++            </View>
++
++            {/* Causes Hint */}
++            <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
++              {revealedOffClues.causes ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Causas Comunes:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedOffClues(prev => ({ ...prev, causes: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Causas' : 'Reveal Causes'}</Text>
++                </Pressable>
++              )}
++            </View>
++
++            {/* Prevention Hint */}
++            <View style={{ paddingBottom: Spacing.one }}>
++              {revealedOffClues.prevention ? (
++                <View>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Prevención:</Text>
++                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
++                </View>
++              ) : (
++                <Pressable 
++                  onPress={() => setRevealedOffClues(prev => ({ ...prev, prevention: true }))}
++                  style={{ paddingVertical: 4 }}
++                >
++                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Prevención' : 'Reveal Prevention'}</Text>
++                </Pressable>
++              )}
++            </View>
++          </View>
++        </ScrollView>
++      </>
++    );
++  };
++
++  const renderOffFlavorsBack = () => {
++    if (!currentOffFlavor) return null;
++    const name = language === 'es' ? currentOffFlavor.name_es : currentOffFlavor.name_en;
++    const sensation = language === 'es' ? currentOffFlavor.sensation_es : currentOffFlavor.sensation_en;
++    const causes = language === 'es' ? currentOffFlavor.causes_es : currentOffFlavor.causes_en;
++    const prevention = language === 'es' ? currentOffFlavor.prevention_es : currentOffFlavor.prevention_en;
++
++    return (
++      <>
++        <View style={styles.cardHeader}>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>DEFECTO REVELADO</Text>
++        </View>
++        
++        <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
++          <View style={styles.answerHeader}>
++            <Text style={styles.answerStyleName}>{name}</Text>
++          </View>
++
++          <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
++            <View>
++              <Text style={styles.cardSectionLabel}>Sensación Organoléptica:</Text>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{sensation}</Text>
++            </View>
++
++            <View>
++              <Text style={styles.cardSectionLabel}>Causas Comunes:</Text>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{causes}</Text>
++            </View>
++
++            <View>
++              <Text style={styles.cardSectionLabel}>Prevención:</Text>
++              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{prevention}</Text>
++            </View>
++          </View>
++        </ScrollView>
++      </>
++    );
++  };
++
+   const renderFlashcards = () => {
+     if (fcState === 'lobby') {
+       return renderFcLobby();
+     }
+ 
+-    if (!currentStyle) return null;
+-    const isCardAnswered = answeredStyles.includes(currentStyle.id);
++    let progressCount = 0;
++    let totalCount = 0;
++    let isCardAnswered = false;
++
++    if (fcStudyMode === 'styles') {
++      if (!currentStyle) return null;
++      progressCount = answeredStyles.length;
++      totalCount = sessionStyles.length;
++      isCardAnswered = answeredStyles.includes(currentStyle.id);
++    } else if (fcStudyMode === 'glossary') {
++      if (!currentGlossary) return null;
++      progressCount = answeredGlossary.length;
++      totalCount = sessionGlossary.length;
++      isCardAnswered = answeredGlossary.includes(currentGlossary.id);
++    } else {
++      if (!currentOffFlavor) return null;
++      progressCount = answeredOffFlavors.length;
++      totalCount = sessionOffFlavors.length;
++      isCardAnswered = answeredOffFlavors.includes(currentOffFlavor.id);
++    }
+ 
+     return (
+       <>
+@@ -327,13 +850,13 @@ export default function FlashcardsScreen() {
+             <Text style={styles.title}>{language === 'es' ? 'Estudio' : 'Study'}</Text>
+           </View>
+           <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
+-            Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{answeredStyles.length}</Text>/{sessionStyles.length}
++            Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{progressCount}</Text>/{totalCount}
+           </Text>
+         </View>
+ 
+         <View style={styles.progressWrapper}>
+           <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
+-            <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${(answeredStyles.length / (sessionStyles.length || 1)) * 100}%` }]} />
++            <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${(progressCount / (totalCount || 1)) * 100}%` }]} />
+           </View>
+         </View>
+ 
+@@ -350,189 +873,15 @@ export default function FlashcardsScreen() {
+ 
+             {!isFlipped ? (
+               <View style={styles.cardSide}>
+-                <View style={styles.cardHeader}>
+-                  <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
+-                  <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
+-                </View>
+-                
+-                <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+-                  <View style={styles.questionSection}>
+-                    <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+-                    <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
+-                  </View>
+-                  
+-                  <View style={styles.vitalCluesContainer}>
+-                    <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
+-                    <View style={styles.cluesRow}>
+-                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
+-                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
+-                      <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>SRM: {currentStyle.vitalStatistics.srm}</Text></View>
+-                    </View>
+-                  </View>
+-
+-                  <View style={{ marginTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }}>
+-                    <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
+-                    
+-                    {/* Aroma Hint */}
+-                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+-                      {revealedClues.aroma ? (
+-                        <View>
+-                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aroma:</Text>
+-                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.aroma}</Text>
+-                        </View>
+-                      ) : (
+-                        <Pressable 
+-                          onPress={() => setRevealedClues(prev => ({ ...prev, aroma: true }))}
+-                          style={{ paddingVertical: 4 }}
+-                        >
+-                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aroma' : 'Reveal Aroma'}</Text>
+-                        </Pressable>
+-                      )}
+-                    </View>
+-
+-                    {/* Aspecto Hint */}
+-                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+-                      {revealedClues.appearance ? (
+-                        <View>
+-                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aspecto:</Text>
+-                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.appearance}</Text>
+-                        </View>
+-                      ) : (
+-                        <Pressable 
+-                          onPress={() => setRevealedClues(prev => ({ ...prev, appearance: true }))}
+-                          style={{ paddingVertical: 4 }}
+-                        >
+-                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Aspecto' : 'Reveal Appearance'}</Text>
+-                        </Pressable>
+-                      )}
+-                    </View>
+-
+-                    {/* Sabor Hint */}
+-                    <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+-                      {revealedClues.flavor ? (
+-                        <View>
+-                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sabor:</Text>
+-                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.flavor}</Text>
+-                        </View>
+-                      ) : (
+-                        <Pressable 
+-                          onPress={() => setRevealedClues(prev => ({ ...prev, flavor: true }))}
+-                          style={{ paddingVertical: 4 }}
+-                        >
+-                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sabor' : 'Reveal Flavor'}</Text>
+-                        </Pressable>
+-                      )}
+-                    </View>
+-
+-                    {/* Sensación en Boca Hint */}
+-                    <View style={{ paddingBottom: Spacing.one }}>
+-                      {revealedClues.mouthfeel ? (
+-                        <View>
+-                          <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación en Boca:</Text>
+-                          <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.mouthfeel}</Text>
+-                        </View>
+-                      ) : (
+-                        <Pressable 
+-                          onPress={() => setRevealedClues(prev => ({ ...prev, mouthfeel: true }))}
+-                          style={{ paddingVertical: 4 }}
+-                        >
+-                          <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sensación en Boca' : 'Reveal Mouthfeel'}</Text>
+-                        </Pressable>
+-                      )}
+-                    </View>
+-                  </View>
+-                </ScrollView>
++                {fcStudyMode === 'styles' && renderStylesFront()}
++                {fcStudyMode === 'glossary' && renderGlossaryFront()}
++                {fcStudyMode === 'offflavors' && renderOffFlavorsFront()}
+               </View>
+             ) : (
+               <View style={styles.cardSide}>
+-                <View style={styles.cardHeader}>
+-                  <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
+-                  <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
+-                </View>
+-                
+-                <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+-                  <View style={styles.answerHeader}>
+-                    <Text style={styles.answerStyleName}>{currentStyle.name}</Text>
+-                    <Text style={{ fontSize: 13, fontFamily: Fonts.spaceGrotesk, color: theme.textSecondary, textAlign: 'center' }}>{currentStyle.category}</Text>
+-                  </View>
+-
+-                  <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
+-                    {/* Impresión General */}
+-                    <View>
+-                      <Text style={styles.cardSectionLabel}>Impresión General:</Text>
+-                      <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.overallImpression}</Text>
+-                    </View>
+-
+-                    {/* Aroma */}
+-                    {currentStyle.aroma ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Aroma:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.aroma}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Aspecto */}
+-                    {currentStyle.appearance ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Aspecto:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.appearance}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Sabor */}
+-                    {currentStyle.flavor ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Sabor:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.flavor}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Sensación en Boca */}
+-                    {currentStyle.mouthfeel ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Sensación en Boca:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.mouthfeel}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Comparación de Estilo */}
+-                    {currentStyle.comparison ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Comparación de Estilo:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.comparison}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Historia */}
+-                    {currentStyle.history ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Historia:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.history}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Ingredientes */}
+-                    {currentStyle.ingredients ? (
+-                      <View>
+-                        <Text style={styles.cardSectionLabel}>Ingredientes Característicos:</Text>
+-                        <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.ingredients}</Text>
+-                      </View>
+-                    ) : null}
+-
+-                    {/* Ejemplos Comerciales */}
+-                    <View style={{ marginBottom: Spacing.three }}>
+-                      <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
+-                      <View style={styles.examplesContainer}>
+-                        {currentStyle.commercialExamples.map((ex, i) => (
+-                          <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
+-                            <QuizIcon name="styles" color={theme.textSecondary} size={12} />
+-                            <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.text }}>{ex}</Text>
+-                          </View>
+-                        ))}
+-                      </View>
+-                    </View>
+-                  </View>
+-                </ScrollView>
++                {fcStudyMode === 'styles' && renderStylesBack()}
++                {fcStudyMode === 'glossary' && renderGlossaryBack()}
++                {fcStudyMode === 'offflavors' && renderOffFlavorsBack()}
+               </View>
+             )}
+           </Pressable>
+@@ -551,7 +900,11 @@ export default function FlashcardsScreen() {
+               <Pressable onPress={() => setIsFlipped(true)} style={[styles.nextCardBtn, { backgroundColor: theme.gold }]}>
+                 <View style={styles.btnContentRow}>
+                   <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
+-                    {language === 'es' ? 'Revelar Estilo' : 'Reveal Style'}
++                    {fcStudyMode === 'styles' 
++                      ? (language === 'es' ? 'Revelar Estilo' : 'Reveal Style') 
++                      : fcStudyMode === 'glossary' 
++                        ? (language === 'es' ? 'Revelar Definición' : 'Reveal Definition') 
++                        : (language === 'es' ? 'Revelar Defecto' : 'Reveal Off-Flavor')}
+                   </Text>
+                   <QuizIcon name="arrow" color={theme.text} size={16} />
+                 </View>
+@@ -589,7 +942,6 @@ export default function FlashcardsScreen() {
+             { id: 'mixed', label: 'Mixto (Todos)', desc: 'Examen simulado integral', icon: 'mixed' },
+             { id: 'styles', label: 'Estilos', desc: 'Adivina estilos, IBU, ABV', icon: 'styles' },
+             { id: 'glossary', label: 'Glosario', desc: 'Términos técnicos', icon: 'glossary' },
+-            { id: 'tags', label: 'Etiquetas', desc: 'Etiquetas BJCP', icon: 'tags' },
+             { id: 'offflavors', label: 'Off-Flavors', desc: 'Defectos y causas', icon: 'offflavors' },
+           ].map(m => (
+             <Pressable 
+@@ -647,20 +999,35 @@ export default function FlashcardsScreen() {
+           <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${((currentQuestionIndex) / questions.length) * 100}%` }]} />
+         </View>
+ 
+-        <ThemedView style={[styles.quizQuestionCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+-          <View style={styles.quizCategoryHeader}>
+-            <QuizIcon name={q.category} color={theme.gold} size={16} />
+-            <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
+-              {q.category === 'mixed' ? 'General' : q.category}
+-            </Text>
+-          </View>
+-          <Text style={{ fontSize: 16, lineHeight: 24, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>{q.question}</Text>
+-        </ThemedView>
++        {(() => {
++          const parts = q.question.split('\n\n');
++          const mainQuestion = parts[0];
++          const subInfo = parts.slice(1).join('\n\n');
++          return (
++            <ThemedView style={[styles.quizQuestionCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
++              <View style={styles.quizCategoryHeader}>
++                <QuizIcon name={q.category} color={theme.gold} size={16} />
++                <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
++                  {q.category === 'mixed' ? 'General' : q.category}
++                </Text>
++              </View>
++              <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.tint }}>
++                {mainQuestion}
++              </Text>
++              {subInfo ? (
++                <Text style={{ fontSize: 14, lineHeight: 20, fontFamily: Fonts.inter, color: theme.text, marginTop: Spacing.two }}>
++                  {subInfo}
++                </Text>
++              ) : null}
++            </ThemedView>
++          );
++        })()}
+ 
+         <View style={styles.optionsContainer}>
+           {q.options.map((opt, i) => {
+             const isCorrectOption = opt === q.options[q.correctIndex];
+             const isSelected = selectedOption === opt;
++            const optionLetter = String.fromCharCode(65 + i);
+             
+             let bgColor: string = theme.backgroundElement;
+             let borderColor: string = theme.border;
+@@ -679,9 +1046,9 @@ export default function FlashcardsScreen() {
+                 textColor = theme.text;
+                 iconName = 'cross';
+               } else {
+-                // Dim other unselected incorrect options
+-                bgColor = 'transparent';
+-                borderColor = 'transparent';
++                // Keep option card but dim it
++                bgColor = theme.backgroundElement;
++                borderColor = theme.border;
+                 textColor = theme.textSecondary;
+               }
+             } else if (isSelected) {
+@@ -692,10 +1059,49 @@ export default function FlashcardsScreen() {
+               <Pressable 
+                 key={i} 
+                 onPress={() => handleQuizAnswer(opt)}
+-                style={[styles.optionBtn, { backgroundColor: bgColor, borderColor }]}
++                disabled={hasAnswered}
++                style={[
++                  styles.optionBtn, 
++                  { backgroundColor: bgColor, borderColor },
++                  hasAnswered && !isSelected && !isCorrectOption && { opacity: 0.6 }
++                ]}
+               >
+-                <Text style={{ color: textColor, fontSize: 14, fontWeight: '600', fontFamily: Fonts.manropeBold, flex: 1 }}>{opt}</Text>
+-                {iconName !== '' && <QuizIcon name={iconName} color={bgColor === theme.success ? '#FFF' : theme.text} size={18} />}
++                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flex: 1 }}>
++                  <View 
++                    style={[
++                      styles.optionLetterBadge, 
++                      { 
++                        backgroundColor: isCorrectOption && hasAnswered 
++                          ? 'rgba(255,255,255,0.2)' 
++                          : isSelected && !isCorrectOption && hasAnswered 
++                            ? 'rgba(0,0,0,0.1)' 
++                            : theme.backgroundSelected,
++                        borderColor: isCorrectOption && hasAnswered 
++                          ? '#FFF' 
++                          : theme.border
++                      }
++                    ]}
++                  >
++                    <Text 
++                      style={[
++                        styles.optionLetterText, 
++                        { 
++                          color: isCorrectOption && hasAnswered 
++                            ? '#FFF' 
++                            : theme.textSecondary 
++                        }
++                      ]}
++                    >
++                      {optionLetter}
++                    </Text>
++                  </View>
++                  <Text style={{ color: textColor, fontSize: 14, fontFamily: Fonts.manrope, flex: 1 }}>
++                    {opt}
++                  </Text>
++                </View>
++                {iconName !== '' && (
++                  <QuizIcon name={iconName} color={bgColor === theme.success ? '#FFF' : theme.text} size={18} />
++                )}
+               </Pressable>
+             );
+           })}
+@@ -750,9 +1156,31 @@ export default function FlashcardsScreen() {
+     );
+   };
+ 
++  const isLobby = (studyMode === 'flashcards' && fcState === 'lobby') || (studyMode === 'quiz' && quizState === 'lobby');
++
+   return (
+     <ThemedView type="tint" style={styles.container}>
+       <SafeAreaView style={styles.safeArea} edges={['top']}>
++        {isLobby && (
++          <View style={styles.lobbyHeader}>
++            <Pressable 
++              onPress={() => {
++                if (router.canGoBack()) {
++                  router.back();
++                } else {
++                  router.replace('/');
++                }
++              }} 
++              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
++            >
++              <Text style={styles.backText}>←</Text>
++            </Pressable>
++            <ThemedText style={styles.headerTitle}>
++              {language === 'es' ? 'Sección de Estudio' : 'Study Section'}
++            </ThemedText>
++            <View style={{ width: 40 }} />
++          </View>
++        )}
+         {renderToggle()}
+         {studyMode === 'flashcards' && renderFlashcards()}
+         {studyMode === 'quiz' && quizState === 'lobby' && renderQuizLobby()}
+@@ -766,6 +1194,11 @@ export default function FlashcardsScreen() {
+ const styles = StyleSheet.create({
+   container: { flex: 1, justifyContent: 'center', flexDirection: 'row', backgroundColor: '#2F5D73' },
+   safeArea: { flex: 1, maxWidth: MaxContentWidth },
++  lobbyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, height: 48 },
++  backButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.12)' },
++  backText: { color: '#FFFFFF', fontSize: 22, fontWeight: 'bold' },
++  pressed: { opacity: 0.7 },
++  headerTitle: { fontSize: 20, color: '#FFFFFF', fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, flex: 1, textAlign: 'center' },
+   toggleContainer: { flexDirection: 'row', padding: Spacing.three, gap: Spacing.two },
+   toggleBtn: { flex: 1, paddingVertical: Spacing.three, alignItems: 'center', borderRadius: Spacing.two, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.2)' },
+   
+@@ -819,6 +1252,8 @@ const styles = StyleSheet.create({
+   quizQuestionCard: { padding: Spacing.three, borderRadius: Spacing.three, borderWidth: 1.5, marginBottom: Spacing.three },
+   optionsContainer: { gap: Spacing.two },
+   optionBtn: { paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, borderRadius: Spacing.two, borderWidth: 1.5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
++  optionLetterBadge: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
++  optionLetterText: { fontSize: 12, fontFamily: Fonts.spaceGroteskBold, fontWeight: '700' },
+   explanationContainer: { marginTop: Spacing.three, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1.5 },
+   nextQuizBtn: { marginTop: Spacing.two, paddingVertical: Spacing.three, borderRadius: Spacing.two, alignItems: 'center' },
+   

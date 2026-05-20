@@ -1,0 +1,387 @@
+diff --git a/src/app/flashcards.tsx b/src/app/flashcards.tsx
+index 7f0fcc4..b4c1fed 100644
+--- a/src/app/flashcards.tsx
++++ b/src/app/flashcards.tsx
+@@ -304,7 +304,7 @@ export default function FlashcardsScreen() {
+         onPress={() => setStudyMode('quiz')}
+       >
+         <Text style={{ color: studyMode === 'quiz' ? theme.tint : '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: Fonts.manropeBold }}>
+-          Quiz Activo
++          {language === 'es' ? 'Quiz Activo' : 'Active Quiz'}
+         </Text>
+       </Pressable>
+     </View>
+@@ -462,18 +462,18 @@ export default function FlashcardsScreen() {
+     return (
+       <>
+         <View style={styles.cardHeader}>
+-          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ ESTILO SOY?</Text>
+-          <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>Cat: {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
++          <Text style={[styles.cardBadge, { color: theme.tint }]}>{language === 'es' ? '¿QUÉ ESTILO SOY?' : 'WHAT STYLE AM I?'}</Text>
++          <Text style={{ fontSize: 12, fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary }}>{language === 'es' ? 'Cat:' : 'Cat:'} {currentStyle.category.replace(/^\d+\.\s+/, '')}</Text>
+         </View>
+         
+         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+           <View style={styles.questionSection}>
+-            <Text style={styles.cardSectionLabel}>Impresión General:</Text>
++            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Impresión General:' : 'Overall Impression:'}</Text>
+             <Text style={styles.cardImpression}>{currentStyle.overallImpression}</Text>
+           </View>
+           
+           <View style={styles.vitalCluesContainer}>
+-            <Text style={styles.cardSectionLabel}>Estadísticas Vitales:</Text>
++            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Estadísticas Vitales:' : 'Vital Statistics:'}</Text>
+             <View style={styles.cluesRow}>
+               <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>ABV: {currentStyle.vitalStatistics.abv}</Text></View>
+               <View style={[styles.clueBadge, { backgroundColor: theme.backgroundSelected }]}><Text style={styles.clueText}>IBUs: {currentStyle.vitalStatistics.ibu}</Text></View>
+@@ -482,13 +482,13 @@ export default function FlashcardsScreen() {
+           </View>
+ 
+           <View style={{ marginTop: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two }}>
+-            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
++            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Pistas Adicionales:' : 'Additional Clues:'}</Text>
+             
+             {/* Aroma Hint */}
+             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+               {revealedClues.aroma ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aroma:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Aroma:' : 'Aroma:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.aroma}</Text>
+                 </View>
+               ) : (
+@@ -505,7 +505,7 @@ export default function FlashcardsScreen() {
+             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+               {revealedClues.appearance ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Aspecto:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Aspecto:' : 'Appearance:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.appearance}</Text>
+                 </View>
+               ) : (
+@@ -522,7 +522,7 @@ export default function FlashcardsScreen() {
+             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+               {revealedClues.flavor ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sabor:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sabor:' : 'Flavor:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.flavor}</Text>
+                 </View>
+               ) : (
+@@ -539,7 +539,7 @@ export default function FlashcardsScreen() {
+             <View style={{ paddingBottom: Spacing.one }}>
+               {revealedClues.mouthfeel ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación en Boca:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación en Boca:' : 'Mouthfeel:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{currentStyle.mouthfeel}</Text>
+                 </View>
+               ) : (
+@@ -562,7 +562,7 @@ export default function FlashcardsScreen() {
+     return (
+       <>
+         <View style={styles.cardHeader}>
+-          <Text style={[styles.cardBadge, { color: theme.success }]}>ESTILO REVELADO</Text>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'ESTILO REVELADO' : 'STYLE REVEALED'}</Text>
+           <Text style={[styles.backIdBadge, { color: '#FFF', backgroundColor: theme.tint }]}>ID: {currentStyle.id}</Text>
+         </View>
+         
+@@ -575,14 +575,14 @@ export default function FlashcardsScreen() {
+           <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
+             {/* Impresión General */}
+             <View>
+-              <Text style={styles.cardSectionLabel}>Impresión General:</Text>
++              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Impresión General:' : 'Overall Impression:'}</Text>
+               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.overallImpression}</Text>
+             </View>
+ 
+             {/* Aroma */}
+             {currentStyle.aroma ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Aroma:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Aroma:' : 'Aroma:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.aroma}</Text>
+               </View>
+             ) : null}
+@@ -590,7 +590,7 @@ export default function FlashcardsScreen() {
+             {/* Aspecto */}
+             {currentStyle.appearance ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Aspecto:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Aspecto:' : 'Appearance:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.appearance}</Text>
+               </View>
+             ) : null}
+@@ -598,7 +598,7 @@ export default function FlashcardsScreen() {
+             {/* Sabor */}
+             {currentStyle.flavor ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Sabor:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sabor:' : 'Flavor:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.flavor}</Text>
+               </View>
+             ) : null}
+@@ -606,7 +606,7 @@ export default function FlashcardsScreen() {
+             {/* Sensación en Boca */}
+             {currentStyle.mouthfeel ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Sensación en Boca:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sensación en Boca:' : 'Mouthfeel:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.mouthfeel}</Text>
+               </View>
+             ) : null}
+@@ -614,7 +614,7 @@ export default function FlashcardsScreen() {
+             {/* Comparación de Estilo */}
+             {currentStyle.comparison ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Comparación de Estilo:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Comparación de Estilo:' : 'Style Comparison:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.comparison}</Text>
+               </View>
+             ) : null}
+@@ -622,7 +622,7 @@ export default function FlashcardsScreen() {
+             {/* Historia */}
+             {currentStyle.history ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Historia:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Historia:' : 'History:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.history}</Text>
+               </View>
+             ) : null}
+@@ -630,14 +630,14 @@ export default function FlashcardsScreen() {
+             {/* Ingredientes */}
+             {currentStyle.ingredients ? (
+               <View>
+-                <Text style={styles.cardSectionLabel}>Ingredientes Característicos:</Text>
++                <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Ingredientes Característicos:' : 'Characteristic Ingredients:'}</Text>
+                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{currentStyle.ingredients}</Text>
+               </View>
+             ) : null}
+ 
+             {/* Ejemplos Comerciales */}
+             <View style={{ marginBottom: Spacing.three }}>
+-              <Text style={styles.cardSectionLabel}>Ejemplos Comerciales:</Text>
++              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Ejemplos Comerciales:' : 'Commercial Examples:'}</Text>
+               <View style={styles.examplesContainer}>
+                 {currentStyle.commercialExamples.map((ex, i) => (
+                   <View key={i} style={[styles.exampleItem, { backgroundColor: theme.backgroundSelected }]}>
+@@ -657,7 +657,7 @@ export default function FlashcardsScreen() {
+     if (!currentGlossary) return null;
+     return (
+       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.four }}>
+-        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>¿QUÉ SIGNIFICA ESTE TÉRMINO?</Text>
++        <Text style={[styles.cardBadge, { color: theme.tint, marginBottom: Spacing.four }]}>{language === 'es' ? '¿QUÉ SIGNIFICA ESTE TÉRMINO?' : 'WHAT DOES THIS TERM MEAN?'}</Text>
+         <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center', paddingHorizontal: Spacing.three }}>
+           {language === 'es' ? currentGlossary.name_es : currentGlossary.name_en}
+         </Text>
+@@ -675,7 +675,7 @@ export default function FlashcardsScreen() {
+     return (
+       <>
+         <View style={styles.cardHeader}>
+-          <Text style={[styles.cardBadge, { color: theme.success }]}>TÉRMINO REVELADO</Text>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'TÉRMINO REVELADO' : 'TERM REVEALED'}</Text>
+         </View>
+         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+           <View style={styles.answerHeader}>
+@@ -700,7 +700,7 @@ export default function FlashcardsScreen() {
+     return (
+       <>
+         <View style={styles.cardHeader}>
+-          <Text style={[styles.cardBadge, { color: theme.tint }]}>¿QUÉ DEFECTO ES?</Text>
++          <Text style={[styles.cardBadge, { color: theme.tint }]}>{language === 'es' ? '¿QUÉ DEFECTO ES?' : 'WHAT OFF-FLAVOR IS IT?'}</Text>
+         </View>
+         
+         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+@@ -711,13 +711,13 @@ export default function FlashcardsScreen() {
+           </View>
+ 
+           <View style={{ gap: Spacing.two, paddingBottom: Spacing.two }}>
+-            <Text style={styles.cardSectionLabel}>Pistas Adicionales:</Text>
++            <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Pistas Adicionales:' : 'Additional Clues:'}</Text>
+ 
+             {/* Sensation Hint */}
+             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+               {revealedOffClues.sensation ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Sensación Organoléptica:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
+                 </View>
+               ) : (
+@@ -734,7 +734,7 @@ export default function FlashcardsScreen() {
+             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
+               {revealedOffClues.causes ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Causas Comunes:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
+                 </View>
+               ) : (
+@@ -751,7 +751,7 @@ export default function FlashcardsScreen() {
+             <View style={{ paddingBottom: Spacing.one }}>
+               {revealedOffClues.prevention ? (
+                 <View>
+-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>Prevención:</Text>
++                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
+                   <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
+                 </View>
+               ) : (
+@@ -779,7 +779,7 @@ export default function FlashcardsScreen() {
+     return (
+       <>
+         <View style={styles.cardHeader}>
+-          <Text style={[styles.cardBadge, { color: theme.success }]}>DEFECTO REVELADO</Text>
++          <Text style={[styles.cardBadge, { color: theme.success }]}>{language === 'es' ? 'DEFECTO REVELADO' : 'OFF-FLAVOR REVEALED'}</Text>
+         </View>
+         
+         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
+@@ -789,17 +789,17 @@ export default function FlashcardsScreen() {
+ 
+           <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
+             <View>
+-              <Text style={styles.cardSectionLabel}>Sensación Organoléptica:</Text>
++              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
+               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{sensation}</Text>
+             </View>
+ 
+             <View>
+-              <Text style={styles.cardSectionLabel}>Causas Comunes:</Text>
++              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
+               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{causes}</Text>
+             </View>
+ 
+             <View>
+-              <Text style={styles.cardSectionLabel}>Prevención:</Text>
++              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
+               <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{prevention}</Text>
+             </View>
+           </View>
+@@ -850,7 +850,7 @@ export default function FlashcardsScreen() {
+             <Text style={styles.title}>{language === 'es' ? 'Estudio' : 'Study'}</Text>
+           </View>
+           <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
+-            Progreso: <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{progressCount}</Text>/{totalCount}
++            {language === 'es' ? 'Progreso:' : 'Progress:'} <Text style={{ color: theme.gold, fontWeight: 'bold' }}>{progressCount}</Text>/{totalCount}
+           </Text>
+         </View>
+ 
+@@ -914,13 +914,13 @@ export default function FlashcardsScreen() {
+                 <Pressable onPress={() => handleFcAnswer(false)} style={[styles.answerBtn, { backgroundColor: theme.gold }]}>
+                   <View style={styles.btnContentRow}>
+                     <QuizIcon name="cross" color={theme.text} size={16} />
+-                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }}>Lo dudé</Text>
++                    <Text style={{ color: theme.text, fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Lo dudé' : 'Unsure'}</Text>
+                   </View>
+                 </Pressable>
+                 <Pressable onPress={() => handleFcAnswer(true)} style={[styles.answerBtn, { backgroundColor: theme.success }]}>
+                   <View style={styles.btnContentRow}>
+                     <QuizIcon name="check" color="#FFF" size={16} />
+-                    <Text style={[styles.btnTextWhite, { fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }]}>¡Lo sabía!</Text>
++                    <Text style={[styles.btnTextWhite, { fontWeight: '700', fontSize: 13, fontFamily: Fonts.manropeBold }]}>{language === 'es' ? '¡Lo sabía!' : 'Knew it!'}</Text>
+                   </View>
+                 </Pressable>
+               </View>
+@@ -936,13 +936,13 @@ export default function FlashcardsScreen() {
+       <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+         <Text style={{ textAlign: 'center', marginBottom: Spacing.four, fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>BJCP Quiz</Text>
+         
+-        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Modo de Estudio:</Text>
++        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Modo de Estudio:' : 'Study Mode:'}</Text>
+         <View style={styles.modesContainer}>
+           {[
+-            { id: 'mixed', label: 'Mixto (Todos)', desc: 'Examen simulado integral', icon: 'mixed' },
+-            { id: 'styles', label: 'Estilos', desc: 'Adivina estilos, IBU, ABV', icon: 'styles' },
+-            { id: 'glossary', label: 'Glosario', desc: 'Términos técnicos', icon: 'glossary' },
+-            { id: 'offflavors', label: 'Off-Flavors', desc: 'Defectos y causas', icon: 'offflavors' },
++            { id: 'mixed', label: language === 'es' ? 'Mixto (Todos)' : 'Mixed (All)', desc: language === 'es' ? 'Examen simulado integral' : 'Comprehensive mock exam', icon: 'mixed' },
++            { id: 'styles', label: language === 'es' ? 'Estilos' : 'Styles', desc: language === 'es' ? 'Adivina estilos, IBU, ABV' : 'Guess styles, IBU, ABV', icon: 'styles' },
++            { id: 'glossary', label: language === 'es' ? 'Glosario' : 'Glossary', desc: language === 'es' ? 'Términos técnicos' : 'Technical terms', icon: 'glossary' },
++            { id: 'offflavors', label: language === 'es' ? 'Off-Flavors' : 'Off-Flavors', desc: language === 'es' ? 'Defectos y causas' : 'Defects and causes', icon: 'offflavors' },
+           ].map(m => (
+             <Pressable 
+               key={m.id}
+@@ -958,7 +958,7 @@ export default function FlashcardsScreen() {
+           ))}
+         </View>
+ 
+-        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>Cantidad de Preguntas:</Text>
++        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Cantidad de Preguntas:' : 'Number of Questions:'}</Text>
+         <View style={styles.countContainer}>
+           {[5, 10, 20, 50].map(c => (
+             <Pressable
+@@ -973,7 +973,7 @@ export default function FlashcardsScreen() {
+ 
+         <Pressable onPress={startQuiz} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
+           <View style={styles.btnContentRow}>
+-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Comenzar Quiz</Text>
++            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Comenzar Quiz' : 'Start Quiz'}</Text>
+             <QuizIcon name="arrow" color="#FFF" size={18} />
+           </View>
+         </Pressable>
+@@ -988,10 +988,10 @@ export default function FlashcardsScreen() {
+     return (
+       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+         <View style={styles.quizHeader}>
+-          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Pregunta {currentQuestionIndex + 1} / {questions.length}</Text>
++          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Pregunta' : 'Question'} {currentQuestionIndex + 1} / {questions.length}</Text>
+           <View style={styles.streakBadge}>
+             <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
+-            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>Racha: {streak}</Text>
++            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Racha:' : 'Streak:'} {streak}</Text>
+           </View>
+         </View>
+         
+@@ -1008,7 +1008,7 @@ export default function FlashcardsScreen() {
+               <View style={styles.quizCategoryHeader}>
+                 <QuizIcon name={q.category} color={theme.gold} size={16} />
+                 <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
+-                  {q.category === 'mixed' ? 'General' : q.category}
++                  {q.category === 'mixed' ? (language === 'es' ? 'General' : 'General') : (q.category === 'styles' ? (language === 'es' ? 'Estilos' : 'Styles') : q.category === 'glossary' ? (language === 'es' ? 'Glosario' : 'Glossary') : q.category === 'offflavors' ? (language === 'es' ? 'Off-Flavors' : 'Off-Flavors') : q.category)}
+                 </Text>
+               </View>
+               <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.tint }}>
+@@ -1113,7 +1113,9 @@ export default function FlashcardsScreen() {
+             <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.gold }]}>
+               <View style={styles.btnContentRow}>
+                 <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
+-                  {currentQuestionIndex + 1 === questions.length ? 'Ver Resultados' : 'Siguiente'}
++                  {currentQuestionIndex + 1 === questions.length 
++                    ? (language === 'es' ? 'Ver Resultados' : 'View Results') 
++                    : (language === 'es' ? 'Siguiente' : 'Next')}
+                 </Text>
+                 <QuizIcon name={currentQuestionIndex + 1 === questions.length ? 'award' : 'arrow'} color={theme.text} size={16} />
+               </View>
+@@ -1131,25 +1133,29 @@ export default function FlashcardsScreen() {
+         <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border, alignItems: 'center', paddingVertical: Spacing.six }]}>
+           <QuizIcon name="award" color={percentage >= 80 ? theme.success : theme.tint} size={64} />
+           
+-          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>Resultados Finales</Text>
++          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>{language === 'es' ? 'Resultados Finales' : 'Final Results'}</Text>
+           
+           <Text style={{ fontSize: 48, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: percentage >= 80 ? theme.success : theme.tint, marginVertical: Spacing.two }}>
+             {percentage}%
+           </Text>
+           
+           <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.textSecondary, marginBottom: Spacing.four }}>
+-            {quizScore} de {questions.length} respuestas correctas
++            {language === 'es' 
++              ? `${quizScore} de ${questions.length} respuestas correctas` 
++              : `${quizScore} of ${questions.length} correct answers`}
+           </Text>
+           
+           <View style={[styles.finalStreakBadge, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
+             <QuizIcon name="fire" color={theme.gold} size={24} />
+             <Text style={{ fontWeight: '700', fontSize: 16, color: theme.text, fontFamily: Fonts.manropeBold }}>
+-              Racha Máxima: {maxStreak}
++              {language === 'es' ? 'Racha Máxima:' : 'Max Streak:'} {maxStreak}
+             </Text>
+           </View>
+ 
+           <Pressable onPress={() => setQuizState('lobby')} style={[styles.startQuizBtn, { backgroundColor: theme.tint, width: '100%', marginTop: Spacing.five }]}>
+-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>Volver al Menú</Text>
++            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
++              {language === 'es' ? 'Volver al Menú' : 'Back to Menu'}
++            </Text>
+           </Pressable>
+         </ThemedView>
+       </ScrollView>
