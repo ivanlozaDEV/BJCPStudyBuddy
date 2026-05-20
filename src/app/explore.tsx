@@ -24,7 +24,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { 
   BeerStyle, 
-  getBJCPStyles 
+  getBJCPStyles,
+  BILINGUAL_BJCP_DATA,
+  getCorrectCategory,
 } from '@/data/bjcp2021';
 import { fuzzyMatch } from '@/utils/fuzzy';
 import { GLOSSARY_DATA, GlossaryTerm, TAG_DEFINITIONS_DATA, TagDefinition } from '@/data/glossary';
@@ -112,14 +114,28 @@ export default function ExploreScreen() {
     .filter(style => {
       // 1. Text Search using hybrid multi-field fuzzy search
       if (searchQuery) {
-        const matchText = fuzzyMatch(searchQuery, [
-          style.id,
+        // Get the raw bilingual data for this style to search both languages
+        const raw = BILINGUAL_BJCP_DATA.find(r => r.id === style.id);
+
+        // Name-only fields: used for acronym generation (IPA → India Pale Ale)
+        const nameFields = [
           style.name,
+          raw?.name_en,
+          raw?.name_es,
+        ];
+
+        // All searchable fields (broader, no acronym generation)
+        const allFields = [
+          style.id,
+          ...nameFields,
           style.category,
+          getCorrectCategory(style.id, 'en'),
           style.overallImpression,
-          ...style.tags
-        ]);
-        if (!matchText) return false;
+          ...style.tags,
+          ...(style.commercialExamples ?? []),
+        ];
+
+        if (!fuzzyMatch(searchQuery, allFields, nameFields)) return false;
       }
 
       // 2. ABV Volume Filter
@@ -135,6 +151,34 @@ export default function ExploreScreen() {
       return true;
     })
     .sort((a, b) => {
+      // When searching, rank by relevance first
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase().trim();
+        const scoreStyle = (style: BeerStyle): number => {
+          const raw = BILINGUAL_BJCP_DATA.find(r => r.id === style.id);
+          const nameEN = (raw?.name_en ?? '').toLowerCase();
+          const nameES = (raw?.name_es ?? '').toLowerCase();
+          const name = style.name.toLowerCase();
+          const cat = style.category.toLowerCase();
+
+          // Exact name match → top priority
+          if (name === q || nameEN === q || nameES === q) return 100;
+          // Name starts with query
+          if (name.startsWith(q) || nameEN.startsWith(q) || nameES.startsWith(q)) return 90;
+          // Name contains query
+          if (name.includes(q) || nameEN.includes(q) || nameES.includes(q)) return 80;
+          // Category contains query (e.g. "21. IPA")
+          if (cat.includes(q)) return 70;
+          // Acronym match on name (IPA → India Pale Ale)
+          const genAcronym = (s: string) => s.split(' ').filter(w => w.length > 1).map(w => w[0]).join('').toLowerCase();
+          if (genAcronym(nameEN) === q || genAcronym(nameES) === q || genAcronym(name) === q) return 65;
+          // Match in other fields (tags, examples, overallImpression)
+          return 10;
+        };
+        const diff = scoreStyle(b) - scoreStyle(a);
+        if (diff !== 0) return diff;
+      }
+      // Default: BJCP category order
       return getCategorySortValue(a.id) - getCategorySortValue(b.id);
     });
 

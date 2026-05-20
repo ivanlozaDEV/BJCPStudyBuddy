@@ -1040,8 +1040,8 @@ export default function FlashcardsScreen() {
         
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
           <View style={[styles.answerHeader, { marginBottom: Spacing.four }]}>
-            <Text style={{ fontSize: 26, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, textAlign: 'center' }}>
-              {name}
+            <Text style={{ fontSize: 48, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.textSecondary, textAlign: 'center', opacity: 0.5 }}>
+              ???
             </Text>
           </View>
 
@@ -1050,53 +1050,20 @@ export default function FlashcardsScreen() {
 
             {/* Sensation Hint */}
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
-              {revealedOffClues.sensation ? (
-                <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
-                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
-                </View>
-              ) : (
-                <Pressable 
-                  onPress={() => setRevealedOffClues(prev => ({ ...prev, sensation: true }))}
-                  style={{ paddingVertical: 4 }}
-                >
-                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Sensación' : 'Reveal Sensation'}</Text>
-                </Pressable>
-              )}
+              <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{sensation}</Text>
             </View>
 
             {/* Causes Hint */}
             <View style={{ borderBottomWidth: 1, borderColor: 'rgba(128,128,128,0.1)', paddingBottom: Spacing.one }}>
-              {revealedOffClues.causes ? (
-                <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
-                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
-                </View>
-              ) : (
-                <Pressable 
-                  onPress={() => setRevealedOffClues(prev => ({ ...prev, causes: true }))}
-                  style={{ paddingVertical: 4 }}
-                >
-                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Causas' : 'Reveal Causes'}</Text>
-                </Pressable>
-              )}
+              <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{causes}</Text>
             </View>
 
             {/* Prevention Hint */}
             <View style={{ paddingBottom: Spacing.one }}>
-              {revealedOffClues.prevention ? (
-                <View>
-                  <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
-                  <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
-                </View>
-              ) : (
-                <Pressable 
-                  onPress={() => setRevealedOffClues(prev => ({ ...prev, prevention: true }))}
-                  style={{ paddingVertical: 4 }}
-                >
-                  <Text style={{ fontSize: 12, fontFamily: Fonts.manropeBold, color: theme.tint }}>👁️ {language === 'es' ? 'Revelar Prevención' : 'Reveal Prevention'}</Text>
-                </Pressable>
-              )}
+              <Text style={{ fontSize: 11, fontFamily: Fonts.manropeBold, color: theme.textSecondary, textTransform: 'uppercase' }}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, marginTop: 2 }}>{prevention}</Text>
             </View>
           </View>
         </ScrollView>
@@ -1120,23 +1087,6 @@ export default function FlashcardsScreen() {
         <ScrollView style={{ flex: 1, maxHeight: 380 }} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
           <View style={styles.answerHeader}>
             <Text style={styles.answerStyleName}>{name}</Text>
-          </View>
-
-          <View style={{ gap: Spacing.three, marginTop: Spacing.two, paddingBottom: Spacing.two }}>
-            <View>
-              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Sensación Organoléptica:' : 'Organoleptic Sensation:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{sensation}</Text>
-            </View>
-
-            <View>
-              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Causas Comunes:' : 'Common Causes:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{causes}</Text>
-            </View>
-
-            <View>
-              <Text style={styles.cardSectionLabel}>{language === 'es' ? 'Prevención:' : 'Prevention:'}</Text>
-              <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 18 }}>{prevention}</Text>
-            </View>
           </View>
         </ScrollView>
       </>
@@ -1196,12 +1146,10 @@ export default function FlashcardsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Pressable 
-            onPress={handleFlipCard}
-            style={({ pressed }) => [
+          <View 
+            style={[
               styles.cardContainer,
-              { backgroundColor: theme.backgroundElement, borderColor: isFlipped ? theme.gold : theme.border, borderWidth: isFlipped ? 2 : 1.5 },
-              pressed && styles.cardPressed
+              { backgroundColor: theme.backgroundElement, borderColor: isFlipped ? theme.gold : theme.border, borderWidth: isFlipped ? 2 : 1.5 }
             ]}
           >
             <View style={[styles.cardColorStripe, { backgroundColor: theme.gold }]} />
@@ -1219,7 +1167,7 @@ export default function FlashcardsScreen() {
                 {fcStudyMode === 'offflavors' && renderOffFlavorsBack()}
               </View>
             )}
-          </Pressable>
+          </View>
 
           <View style={styles.controlsContainer}>
             {isCardAnswered ? (

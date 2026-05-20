@@ -81,10 +81,13 @@ export default function HomeScreen() {
           >
           {/* Magnificent Centered Hero Branding Area */}
           <View style={styles.heroContainer}>
-            <BeerLogo size={105} />
-            <ThemedText style={styles.appName}>
-              Brew<Text style={styles.appNameLight}>Study</Text>
-            </ThemedText>
+            <View style={styles.heroRow}>
+              <BeerLogo size={105} />
+              <View style={styles.heroTextColumn}>
+                <ThemedText style={styles.appNameTop}>BREW</ThemedText>
+                <ThemedText style={styles.appNameBottom}>Study</ThemedText>
+              </View>
+            </View>
             <ThemedText style={styles.subtitle}>
               {t('selectOption')}
             </ThemedText>
@@ -156,23 +159,36 @@ const styles = StyleSheet.create({
   heroContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.three,
     marginBottom: Spacing.five,
     marginTop: Spacing.four,
   },
-  appName: {
-    fontSize: 54, // Beautiful giant Hero title
-    lineHeight: 64, // Explicit line height to prevent custom font clipping on iOS
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  heroTextColumn: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    paddingTop: Spacing.two, // Visual alignment
+  },
+  appNameTop: {
+    fontSize: 56,
+    lineHeight: 56,
     fontWeight: '900',
     color: '#FFFFFF',
     fontFamily: Fonts.spaceGroteskBold,
-    letterSpacing: -1.2, // Tighter brand kerning
-    marginTop: Spacing.three,
-    textAlign: 'center',
+    letterSpacing: -1.5,
   },
-  appNameLight: {
-    fontFamily: Fonts.spaceGrotesk,
+  appNameBottom: {
+    fontSize: 52,
+    lineHeight: 52,
     fontWeight: '400',
+    color: '#FFFFFF',
+    fontFamily: Fonts.spaceGrotesk,
+    letterSpacing: -1.0,
+    marginTop: -8, // Tighten up the stack
   },
   subtitle: {
     fontSize: 11,

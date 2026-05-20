@@ -34,9 +34,9 @@ export default function GlossaryScreen() {
     definition: language === 'es' ? g.definition_es : g.definition_en,
   }));
 
-  const filteredGlossary = glossaryList.filter(g => 
-    fuzzyMatch(searchQuery, [g.name, g.definition])
-  );
+  const filteredGlossary = glossaryList
+    .filter(g => fuzzyMatch(searchQuery, [g.name, g.definition]))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // 2. Localized and filtered tags list
   const tagsList = TAG_DEFINITIONS_DATA.map(tData => ({
@@ -45,9 +45,9 @@ export default function GlossaryScreen() {
     definition: language === 'es' ? tData.description_es : tData.description_en,
   }));
 
-  const filteredTags = tagsList.filter(tData => 
-    fuzzyMatch(searchQuery, [tData.name, tData.definition])
-  );
+  const filteredTags = tagsList
+    .filter(tData => fuzzyMatch(searchQuery, [tData.name, tData.definition]))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Active selection projection
   const activeList = activeTab === 'concepts' ? filteredGlossary : filteredTags;

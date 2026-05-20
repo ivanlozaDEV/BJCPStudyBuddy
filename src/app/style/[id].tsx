@@ -658,9 +658,12 @@ export default function StyleDetailScreen() {
 
             {/* Dynamic Link Choice Modal Overlay (Inside Main Modal) */}
             {linkChoiceModalVisible && (
-              <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]}>
-                <View style={styles.choiceModalOverlay}>
-                  <View style={[styles.choiceModalContainer, { backgroundColor: theme.backgroundElement }]}>
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000, justifyContent: 'center', alignItems: 'center' }]}>
+                <Pressable 
+                  style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]} 
+                  onPress={() => setLinkChoiceModalVisible(false)}
+                />
+                <View style={[styles.choiceModalContainer, { backgroundColor: theme.backgroundElement, width: '90%', maxWidth: 400 }]}>
                     <Text style={[styles.choiceModalTitle, { color: theme.text }]}>
                       {language === 'es' ? 'Referencia Cruzada' : 'Cross Reference'}
                     </Text>
@@ -732,24 +735,22 @@ export default function StyleDetailScreen() {
                       </Pressable>
                     </View>
                   </View>
-                </View>
               </View>
             )}
 
             {/* Dynamic Glossary Term Details Modal Overlay (Inside Main Modal) */}
             {glossaryModalVisible && (
-              <View style={[StyleSheet.absoluteFill, { zIndex: 1001, elevation: 1001 }]}>
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1001, elevation: 1001, justifyContent: 'center', alignItems: 'center' }]}>
                 <Pressable 
-                  style={styles.modalOverlay} 
+                  style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]} 
                   onPress={() => setGlossaryModalVisible(false)}
+                />
+                <View 
+                  style={[
+                    styles.glossaryModalContent,
+                    { backgroundColor: theme.backgroundElement, borderColor: theme.border }
+                  ]}
                 >
-                  <View 
-                    style={[
-                      styles.glossaryModalContent,
-                      { backgroundColor: theme.backgroundElement, borderColor: theme.border }
-                    ]}
-                    onStartShouldSetResponder={() => true}
-                  >
                     <View style={styles.glossaryModalHeader}>
                       <Text style={{ fontSize: 24 }}>📖</Text>
                       <Text style={[styles.glossaryModalTitle, { color: theme.text }]} numberOfLines={2}>
@@ -763,6 +764,26 @@ export default function StyleDetailScreen() {
                       </Text>
                     </ScrollView>
 
+                    {selectedGlossaryTerm && OFF_FLAVORS_DATA.some(o => o.id === selectedGlossaryTerm.id) && (
+                      <Pressable 
+                        style={[styles.glossaryModalButton, { backgroundColor: '#D99B26', marginBottom: Spacing.three }]}
+                        onPress={() => {
+                          const offFlavor = OFF_FLAVORS_DATA.find(o => o.id === selectedGlossaryTerm.id);
+                          if (offFlavor) {
+                            setGlossaryModalVisible(false);
+                            setTimeout(() => {
+                              setSelectedOffFlavor(offFlavor);
+                              setOffFlavorModalVisible(true);
+                            }, 300);
+                          }
+                        }}
+                      >
+                        <Text style={styles.glossaryModalButtonText}>
+                          {language === 'es' ? 'Ver Perfil Sensorial (Off-Flavor)' : 'View Sensory Profile (Off-Flavor)'}
+                        </Text>
+                      </Pressable>
+                    )}
+
                     <Pressable 
                       style={[styles.glossaryModalButton, { backgroundColor: theme.tint }]}
                       onPress={() => setGlossaryModalVisible(false)}
@@ -772,24 +793,22 @@ export default function StyleDetailScreen() {
                       </Text>
                     </Pressable>
                   </View>
-                </Pressable>
               </View>
             )}
 
             {/* Dynamic Off-Flavor Modal Overlay (Inside Main Modal) */}
             {offFlavorModalVisible && (
-              <View style={[StyleSheet.absoluteFill, { zIndex: 1002, elevation: 1002 }]}>
+              <View style={[StyleSheet.absoluteFill, { zIndex: 1002, elevation: 1002, justifyContent: 'center', alignItems: 'center' }]}>
                 <Pressable 
-                  style={styles.modalOverlay} 
+                  style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]} 
                   onPress={() => setOffFlavorModalVisible(false)}
+                />
+                <View 
+                  style={[
+                    styles.offFlavorCard,
+                    { backgroundColor: theme.backgroundElement, borderColor: theme.border }
+                  ]}
                 >
-                  <View 
-                    style={[
-                      styles.offFlavorCard,
-                      { backgroundColor: theme.backgroundElement, borderColor: theme.border }
-                    ]}
-                    onStartShouldSetResponder={() => true}
-                  >
                     <View style={styles.offFlavorHeader}>
                       <Text style={{ fontSize: 28 }}>{(selectedOffFlavor as any)?.icon || '⚠️'}</Text>
                       <Text style={[styles.offFlavorTitle, { color: theme.text }]} numberOfLines={2}>
@@ -848,7 +867,6 @@ export default function StyleDetailScreen() {
                       </Text>
                     </Pressable>
                   </View>
-                </Pressable>
               </View>
             )}
 

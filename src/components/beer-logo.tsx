@@ -1,5 +1,47 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 import Svg, { Path, Circle, LinearGradient, Stop, Defs } from 'react-native-svg';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+function AnimatedGlassBubble({ startX, delay, duration, r, maxOpacity }: { startX: number, delay: number, duration: number, r: number, maxOpacity: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Start with a small offset for randomness
+    const timer = setTimeout(() => {
+      Animated.loop(
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: duration,
+          useNativeDriver: true,
+        })
+      ).start();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [duration, delay]);
+
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [78, 32] // From bottom of glass liquid to foam
+  });
+
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.1, 0.8, 1],
+    outputRange: [0, maxOpacity, maxOpacity, 0] // Fade in, hold, fade out at top
+  });
+
+  return (
+    <AnimatedCircle 
+      cx={startX} 
+      cy={translateY} 
+      r={r} 
+      fill="#FFFFFF" 
+      opacity={opacity} 
+    />
+  );
+}
 
 interface BeerLogoProps {
   size?: number;
@@ -36,11 +78,12 @@ export function BeerLogo({ size = 40 }: BeerLogoProps) {
       />
 
       {/* 2. SPARKLING BEER BUBBLES inside the liquid */}
-      <Circle cx="40" cy="48" r="1.5" fill="#FFFFFF" opacity="0.7" />
-      <Circle cx="48" cy="62" r="2.2" fill="#FFFFFF" opacity="0.6" />
-      <Circle cx="60" cy="54" r="1.8" fill="#FFFFFF" opacity="0.8" />
-      <Circle cx="44" cy="38" r="2.0" fill="#FFFFFF" opacity="0.5" />
-      <Circle cx="56" cy="44" r="1.3" fill="#FFFFFF" opacity="0.7" />
+      <AnimatedGlassBubble startX={40} delay={0} duration={2500} r={1.5} maxOpacity={0.7} />
+      <AnimatedGlassBubble startX={48} delay={800} duration={3200} r={2.2} maxOpacity={0.6} />
+      <AnimatedGlassBubble startX={60} delay={400} duration={2800} r={1.8} maxOpacity={0.8} />
+      <AnimatedGlassBubble startX={44} delay={1200} duration={2200} r={2.0} maxOpacity={0.5} />
+      <AnimatedGlassBubble startX={56} delay={1500} duration={3500} r={1.3} maxOpacity={0.7} />
+      <AnimatedGlassBubble startX={52} delay={200} duration={2900} r={1.6} maxOpacity={0.6} />
 
       {/* 3. GLASS STEM AND BASE OUTLINE (Stainless steel look) */}
       {/* Base */}
