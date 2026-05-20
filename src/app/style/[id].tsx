@@ -349,7 +349,13 @@ export default function StyleDetailScreen() {
               {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <Pressable 
-                  onPress={() => router.back()}
+                  onPress={() => {
+                    if (router.canGoBack()) {
+                      router.back();
+                    } else {
+                      router.replace('/');
+                    }
+                  }}
                   style={styles.modalCloseBtn}
                 >
                   <Text style={styles.modalBackText}>

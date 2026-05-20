@@ -126,7 +126,7 @@ export default function OffFlavorsScreen() {
                       {/* 1. TASTES / SMELLS LIKE */}
                       <View style={styles.sensationBadge}>
                         <Text style={styles.sensationBadgeHeader}>
-                          👅 {language === 'es' ? 'SABOR Y OLOR (TASTES/SMELLS LIKE)' : 'TASTES / SMELLS LIKE'}
+                          👅 {language === 'es' ? 'SABOR Y OLOR' : 'TASTES / SMELLS LIKE'}
                         </Text>
                         <Text style={styles.sensationBadgeText}>
                           {item.sensation}
@@ -136,7 +136,7 @@ export default function OffFlavorsScreen() {
                       {/* 2. POSSIBLE CAUSES */}
                       <View style={styles.detailCompartment}>
                         <Text style={styles.compartmentTitle}>
-                          🔬 {language === 'es' ? 'CAUSAS POSIBLES (POSSIBLE CAUSES)' : 'POSSIBLE CAUSES'}
+                          🔬 {language === 'es' ? 'CAUSAS POSIBLES' : 'POSSIBLE CAUSES'}
                         </Text>
                         <Text style={[styles.compartmentText, { color: theme.text }]}>
                           {item.causes}
@@ -146,7 +146,7 @@ export default function OffFlavorsScreen() {
                       {/* 3. HOW TO AVOID */}
                       <View style={styles.detailCompartment}>
                         <Text style={styles.compartmentTitle}>
-                          🛡️ {language === 'es' ? 'CÓMO EVITAR (HOW TO AVOID)' : 'HOW TO AVOID'}
+                          🛡️ {language === 'es' ? 'CÓMO EVITAR' : 'HOW TO AVOID'}
                         </Text>
                         <Text style={[styles.compartmentText, { color: theme.text }]}>
                           {item.prevention}

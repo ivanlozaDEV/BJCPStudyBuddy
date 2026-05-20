@@ -356,7 +356,13 @@ export default function ExploreScreen() {
           {!isSearching ? (
             <View style={styles.headerTop}>
               <Pressable 
-                onPress={() => router.back()}
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/');
+                  }
+                }}
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
               >
                 <Text style={styles.backText}>←</Text>
