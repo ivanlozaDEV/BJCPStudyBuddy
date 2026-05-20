@@ -1320,18 +1320,49 @@ export default function FlashcardsScreen() {
     const hasAnswered = selectedOption !== null;
 
     return (
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.quizHeader}>
-          <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Pregunta' : 'Question'} {currentQuestionIndex + 1} / {questions.length}</Text>
+      <>
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+            <Pressable 
+              onPress={() => {
+                Alert.alert(
+                  language === 'es' ? 'Salir del Quiz' : 'Exit Quiz',
+                  language === 'es' 
+                    ? '¿Estás seguro de que deseas salir del quiz en curso? Perderás tu progreso actual.'
+                    : 'Are you sure you want to exit the current quiz? You will lose your current progress.',
+                  [
+                    { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                    { text: language === 'es' ? 'Salir' : 'Exit', style: 'destructive', onPress: () => setQuizState('lobby') }
+                  ]
+                );
+              }}
+              style={({ pressed }) => [
+                { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.12)' },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' }}>←</Text>
+            </Pressable>
+            <Text style={styles.title}>{language === 'es' ? 'Quiz' : 'Quiz'}</Text>
+          </View>
           <View style={styles.streakBadge}>
             <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
             <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Racha:' : 'Streak:'} {streak}</Text>
           </View>
         </View>
-        
-        <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)', marginBottom: Spacing.four }]}>
-          <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${((currentQuestionIndex) / questions.length) * 100}%` }]} />
+
+        <View style={styles.progressWrapper}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
+              {language === 'es' ? 'Pregunta' : 'Question'} {currentQuestionIndex + 1} / {questions.length}
+            </Text>
+          </View>
+          <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
+            <View style={[styles.progressBarFill, { backgroundColor: theme.gold, width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }]} />
+          </View>
         </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {(() => {
           const parts = q.question.split('\n\n');
@@ -1457,8 +1488,9 @@ export default function FlashcardsScreen() {
           </View>
         )}
       </ScrollView>
-    );
-  };
+    </>
+  );
+};
 
   const renderQuizResults = () => {
     const percentage = Math.round((quizScore / questions.length) * 100);

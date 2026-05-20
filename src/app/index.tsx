@@ -25,6 +25,13 @@ export default function HomeScreen() {
     route: '/explore' | '/comparator' | '/offflavors' | '/flashcards' | '/settings' | '/glossary';
   }[] = [
     {
+      id: 'flashcards',
+      title: t('flashcards'),
+      description: t('flashcardsDesc'),
+      icon: 'flashcards',
+      route: '/flashcards',
+    },
+    {
       id: 'explore',
       title: t('exploreStyles'),
       description: t('exploreStylesDesc'),
@@ -44,13 +51,6 @@ export default function HomeScreen() {
       description: t('offFlavorsDesc'),
       icon: 'offflavors',
       route: '/offflavors',
-    },
-    {
-      id: 'flashcards',
-      title: t('flashcards'),
-      description: t('flashcardsDesc'),
-      icon: 'flashcards',
-      route: '/flashcards',
     },
     {
       id: 'glossary',

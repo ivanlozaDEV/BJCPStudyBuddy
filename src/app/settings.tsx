@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { StyleSheet, Pressable, View, ScrollView, Switch, Alert } from 'react-native';
+import React from 'react';
+import { StyleSheet, Pressable, View, ScrollView, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,10 +14,6 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const { t, language, setLanguage } = useTranslation();
 
-  // Settings state toggles
-  const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [hapticFeedback, setHapticFeedback] = useState(true);
-
   const handleResetProgress = () => {
     Alert.alert(
       t('resetTitle'),
@@ -26,7 +23,31 @@ export default function SettingsScreen() {
         { 
           text: language === 'es' ? 'Restablecer' : 'Reset', 
           style: 'destructive', 
-          onPress: () => alert(t('resetSuccess')) 
+          onPress: async () => {
+            try {
+              const keys = [
+                '@BJCPStudyBuddy:fcStudyMode',
+                '@BJCPStudyBuddy:selectedCategory',
+                '@BJCPStudyBuddy:answeredStyles',
+                '@BJCPStudyBuddy:answeredGlossary',
+                '@BJCPStudyBuddy:answeredOffFlavors',
+                '@BJCPStudyBuddy:fcScore',
+                '@BJCPStudyBuddy:sessionStylesIds',
+                '@BJCPStudyBuddy:currentStyleId',
+                '@BJCPStudyBuddy:sessionGlossaryIds',
+                '@BJCPStudyBuddy:currentGlossaryId',
+                '@BJCPStudyBuddy:sessionOffFlavorsIds',
+                '@BJCPStudyBuddy:currentOffFlavorId',
+              ];
+              await AsyncStorage.multiRemove(keys);
+              Alert.alert(
+                language === 'es' ? 'Completado' : 'Success',
+                t('resetSuccess')
+              );
+            } catch (e) {
+              console.error(e);
+            }
+          }
         }
       ]
     );
@@ -72,7 +93,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView type="tint" style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         
         {/* Header with Back Button */}
@@ -100,31 +121,23 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Profile Card */}
-          <ThemedView type="backgroundElement" style={styles.profileCard}>
-            <View style={[styles.profileAvatar, { backgroundColor: theme.backgroundSelected }]}>
-              <ThemedText style={styles.avatarEmoji}>🎓</ThemedText>
-            </View>
-            <View style={styles.profileInfo}>
-              <ThemedText type="default" style={styles.profileName}>
-                {t('profileName')}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('profileRank')}
-              </ThemedText>
-            </View>
-          </ThemedView>
-
-          {/* Group 1: Study Configuration */}
+          {/* Group 1: Guide Information */}
           <View style={styles.sectionHeader}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-              {t('studyConfig')}
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              {t('guideInfo')}
             </ThemedText>
           </View>
           <ThemedView type="backgroundElement" style={styles.settingsGroup}>
             {renderSettingRow("📚", t('activeGuide'), "BJCP 2021")}
-            <View style={styles.divider} />
-            
+          </ThemedView>
+
+          {/* Group 2: Study Configuration */}
+          <View style={styles.sectionHeader}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              {t('studyConfig')}
+            </ThemedText>
+          </View>
+          <ThemedView type="backgroundElement" style={styles.settingsGroup}>
             {/* Dynamic Language Toggle Row */}
             {renderSettingRow(
               "🌐", 
@@ -132,52 +145,30 @@ export default function SettingsScreen() {
               language === 'es' ? '🇪🇸 Español' : '🇬🇧 English', 
               toggleLanguage
             )}
-            
-            <View style={styles.divider} />
-            {renderSettingRow(
-              "⏰", 
-              t('reminders'), 
-              undefined, 
-              undefined, 
-              <Switch
-                value={remindersEnabled}
-                onValueChange={setRemindersEnabled}
-                trackColor={{ false: theme.backgroundSelected, true: theme.tint }}
-                thumbColor="#FFFFFF"
-              />
-            )}
-            <View style={styles.divider} />
-            {renderSettingRow(
-              "📳", 
-              t('hapticFeedback'), 
-              undefined, 
-              undefined, 
-              <Switch
-                value={hapticFeedback}
-                onValueChange={setHapticFeedback}
-                trackColor={{ false: theme.backgroundSelected, true: theme.tint }}
-                thumbColor="#FFFFFF"
-              />
-            )}
           </ThemedView>
 
           {/* Group 2: Resources & Links */}
           <View style={styles.sectionHeader}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
               {t('resources')}
             </ThemedText>
           </View>
           <ThemedView type="backgroundElement" style={styles.settingsGroup}>
-            {renderSettingRow("🌐", t('officialSite'), undefined, () => alert(language === 'es' ? 'Navegando a BJCP.org...' : 'Navigating to BJCP.org...'))}
+            {renderSettingRow("🌐", t('officialSite'), undefined, () => Linking.openURL('https://www.bjcp.org'))}
             <View style={styles.divider} />
-            {renderSettingRow("📜", t('downloadPdf'), undefined, () => alert(language === 'es' ? 'Abriendo PDF de Estilos...' : 'Opening Style Guide PDF...'))}
-            <View style={styles.divider} />
-            {renderSettingRow("📬", t('appFeedback'), undefined, () => alert(language === 'es' ? 'Contacto: soporte@bjcpbuddy.com' : 'Contact: support@bjcpbuddy.com'))}
+            {renderSettingRow("📬", t('appFeedback'), undefined, () => {
+              Linking.openURL('mailto:ivanlozadev@gmail.com').catch(() => {
+                Alert.alert(
+                  language === 'es' ? 'Contacto' : 'Contact',
+                  language === 'es' ? 'Contacto: ivanlozadev@gmail.com' : 'Contact: ivanlozadev@gmail.com'
+                );
+              });
+            })}
           </ThemedView>
 
           {/* Danger Zone */}
           <View style={styles.sectionHeader}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
               {t('dangerZone')}
             </ThemedText>
           </View>
@@ -215,6 +206,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     flexDirection: 'row',
+    backgroundColor: '#2F5D73',
   },
   safeArea: {
     flex: 1,
@@ -297,6 +289,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1,
     fontFamily: Fonts.manropeBold,
+    color: '#FFFFFF',
   },
   settingsGroup: {
     borderRadius: Spacing.four,
@@ -364,7 +357,7 @@ const styles = StyleSheet.create({
   },
   creditsText: {
     fontSize: 10,
-    color: 'rgba(128,128,128,0.5)',
+    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     fontFamily: Fonts.manrope,
   },
