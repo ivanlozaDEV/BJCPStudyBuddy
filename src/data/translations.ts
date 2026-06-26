@@ -113,8 +113,10 @@ export const translations = {
     resetTitle: 'Restablecer Progreso',
     resetMessage: '¿Estás seguro de que deseas restablecer tu puntuación de estudio y tu historial de fichas? Esta acción no se puede deshacer.',
     resetSuccess: 'Progreso restablecido correctamente. ¡Buen viaje de estudio! 🍻',
-    credits1: 'BJCP Study Buddy v1.0.0',
+    credits1: 'BrewStudy v1.0.0',
     credits2: 'Creado con amor por la cerveza y la ciencia 🌾',
+    legalSection: 'AVISO LEGAL',
+    disclaimer: 'BrewStudy es una herramienta de estudio independiente y no está afiliada, respaldada ni patrocinada por el Beer Judge Certification Program (BJCP). BJCP® es una marca registrada del BJCP. El contenido se basa en las Guías de Estilo BJCP 2021 y se usa con fines educativos.',
   },
   en: {
     // Navigation / General
@@ -228,7 +230,9 @@ export const translations = {
     resetTitle: 'Reset Progress',
     resetMessage: 'Are you sure you want to reset your study score and card history? This action cannot be undone.',
     resetSuccess: 'Progress reset successfully. Have a great study trip! 🍻',
-    credits1: 'BJCP Study Buddy v1.0.0',
+    credits1: 'BrewStudy v1.0.0',
     credits2: 'Created with love for beer and science 🌾',
+    legalSection: 'LEGAL',
+    disclaimer: 'BrewStudy is an independent study tool and is not affiliated with, endorsed by, or sponsored by the Beer Judge Certification Program (BJCP). BJCP® is a registered trademark of the BJCP. Content is based on the 2021 BJCP Style Guidelines, used for educational purposes.',
   }
 };

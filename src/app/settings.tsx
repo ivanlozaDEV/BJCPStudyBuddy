@@ -185,6 +185,18 @@ export default function SettingsScreen() {
             </ThemedText>
           </Pressable>
 
+          {/* Legal Disclaimer */}
+          <View style={styles.sectionHeader}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              {t('legalSection')}
+            </ThemedText>
+          </View>
+          <View style={styles.disclaimerCard}>
+            <ThemedText style={styles.disclaimerText}>
+              {t('disclaimer')}
+            </ThemedText>
+          </View>
+
           {/* App Credits */}
           <View style={styles.creditsContainer}>
             <ThemedText type="code" style={styles.creditsText}>
@@ -360,5 +372,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     fontFamily: Fonts.manrope,
+  },
+  disclaimerCard: {
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: Spacing.three,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    padding: Spacing.three,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.55)',
+    fontFamily: Fonts.inter,
+    textAlign: 'center',
   },
 });
