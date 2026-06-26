@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.anonymous.bjcp-study-buddy"
+      "bundleIdentifier": "com.ivanloza.bjcpstudybuddy",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
