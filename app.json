@@ -8,7 +8,7 @@
     "scheme": "bjcpstudybuddy",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.ivanloza.bjcpstudybuddy",
       "buildNumber": "1"
     },
@@ -30,9 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/welcome.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#0A0C10"
+          "backgroundColor": "#2F5D73"
         }
       ],
       "expo-font",

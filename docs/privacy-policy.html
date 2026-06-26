@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — BrewStudy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f7fa;
+      color: #0a0c10;
+      line-height: 1.7;
+    }
+
+    header {
+      background: #2f5d73;
+      color: #fff;
+      padding: 40px 24px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 8px;
+      opacity: 0.75;
+      font-size: 0.9rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 48px auto;
+      padding: 0 24px 64px;
+    }
+
+    .lang-toggle {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .lang-toggle button {
+      padding: 8px 20px;
+      border: 2px solid #2f5d73;
+      border-radius: 8px;
+      background: transparent;
+      color: #2f5d73;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-toggle button.active,
+    .lang-toggle button:hover {
+      background: #2f5d73;
+      color: #fff;
+    }
+
+    section { margin-bottom: 32px; }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2f5d73;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e0e7ef;
+    }
+
+    p, li { font-size: 0.95rem; color: #2a313c; }
+
+    ul { padding-left: 20px; margin-top: 6px; }
+    li { margin-bottom: 4px; }
+
+    .badge {
+      display: inline-block;
+      background: #e6f4f0;
+      color: #2d6a4f;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    .updated {
+      font-size: 0.8rem;
+      color: #a7b1bc;
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    [data-lang] { display: none; }
+    [data-lang].visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🍺 BrewStudy</h1>
+  <p>Privacy Policy · Política de Privacidad</p>
+</header>
+
+<div class="container">
+
+  <div class="lang-toggle">
+    <button class="active" onclick="setLang('en')">English</button>
+    <button onclick="setLang('es')">Español</button>
+  </div>
+
+  <!-- ── ENGLISH ── -->
+  <div data-lang="en" class="visible">
+    <span class="badge">✅ No data collected</span>
+
+    <section>
+      <h2>Overview</h2>
+      <p>BrewStudy ("the App") is a BJCP study companion built for offline use. We are committed to your privacy. <strong>This app does not collect, transmit, or share any personal data.</strong></p>
+    </section>
+
+    <section>
+      <h2>Data We Do Not Collect</h2>
+      <ul>
+        <li>No account registration or login required</li>
+        <li>No personal information (name, email, location)</li>
+        <li>No usage analytics or tracking</li>
+        <li>No crash reporting services</li>
+        <li>No advertising identifiers</li>
+        <li>No camera, microphone, or contacts access</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Local Storage</h2>
+      <p>The app stores your preferences (such as language selection and last visited screen) locally on your device using AsyncStorage. This data never leaves your device and is deleted when you uninstall the app.</p>
+    </section>
+
+    <section>
+      <h2>Third-Party Services</h2>
+      <p>BrewStudy does not integrate any third-party SDKs, analytics platforms, or advertising networks. All app content is bundled locally and works fully offline.</p>
+    </section>
+
+    <section>
+      <h2>Children's Privacy</h2>
+      <p>The App is not directed at children under 13. We do not knowingly collect information from children.</p>
+    </section>
+
+    <section>
+      <h2>Changes to This Policy</h2>
+      <p>If we update this policy, we will revise the date below. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>If you have any questions, contact us at: <a href="mailto:ivalozadev@gmail.com">ivalozadev@gmail.com</a></p>
+    </section>
+  </div>
+
+  <!-- ── ESPAÑOL ── -->
+  <div data-lang="es">
+    <span class="badge">✅ Sin recolección de datos</span>
+
+    <section>
+      <h2>Resumen</h2>
+      <p>BrewStudy ("la App") es una herramienta de estudio BJCP diseñada para uso sin conexión. Estamos comprometidos con tu privacidad. <strong>Esta app no recolecta, transmite ni comparte ningún dato personal.</strong></p>
+    </section>
+
+    <section>
+      <h2>Datos que NO recolectamos</h2>
+      <ul>
+        <li>No requiere registro ni inicio de sesión</li>
+        <li>No accede a información personal (nombre, email, ubicación)</li>
+        <li>No incluye analytics ni rastreo de uso</li>
+        <li>No reportes de errores a servicios externos</li>
+        <li>No identificadores publicitarios</li>
+        <li>No acceso a cámara, micrófono ni contactos</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Almacenamiento Local</h2>
+      <p>La app guarda tus preferencias (como el idioma seleccionado y la última pantalla visitada) de forma local en tu dispositivo usando AsyncStorage. Estos datos nunca salen de tu dispositivo y se eliminan al desinstalar la app.</p>
+    </section>
+
+    <section>
+      <h2>Servicios de Terceros</h2>
+      <p>BrewStudy no integra SDKs de terceros, plataformas de analytics ni redes de publicidad. Todo el contenido de la app está incluido localmente y funciona completamente sin conexión.</p>
+    </section>
+
+    <section>
+      <h2>Privacidad de Menores</h2>
+      <p>La App no está dirigida a menores de 13 años. No recopilamos intencionalmente información de menores.</p>
+    </section>
+
+    <section>
+      <h2>Cambios a esta Política</h2>
+      <p>Si actualizamos esta política, revisaremos la fecha indicada abajo. El uso continuado de la app después de los cambios constituye la aceptación de la política actualizada.</p>
+    </section>
+
+    <section>
+      <h2>Contacto</h2>
+      <p>Si tienes preguntas, contáctanos en: <a href="mailto:ivalozadev@gmail.com">ivalozadev@gmail.com</a></p>
+    </section>
+  </div>
+
+  <p class="updated">Last updated / Última actualización: June 2026</p>
+</div>
+
+<script>
+  function setLang(lang) {
+    document.querySelectorAll('[data-lang]').forEach(el => {
+      el.classList.toggle('visible', el.dataset.lang === lang);
+    });
+    document.querySelectorAll('.lang-toggle button').forEach((btn, i) => {
+      btn.classList.toggle('active', (i === 0 && lang === 'en') || (i === 1 && lang === 'es'));
+    });
+  }
+</script>
+
+</body>
+</html>
