@@ -2,9 +2,14 @@
   "expo": {
     "name": "BJCP Study Buddy",
     "slug": "bjcp-study-buddy",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2F5D73"
+    },
     "scheme": "bjcpstudybuddy",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -30,7 +35,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#2F5D73"
+          "backgroundColor": "#2F5D73",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200
         }
       ],
       "expo-font",
