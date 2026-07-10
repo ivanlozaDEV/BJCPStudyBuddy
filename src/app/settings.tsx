@@ -157,10 +157,10 @@ export default function SettingsScreen() {
             {renderSettingRow("🌐", t('officialSite'), undefined, () => Linking.openURL('https://www.bjcp.org'))}
             <View style={styles.divider} />
             {renderSettingRow("📬", t('appFeedback'), undefined, () => {
-              Linking.openURL('mailto:ivanlozadev@gmail.com').catch(() => {
+              Linking.openURL('mailto:soporte@banana-computer.com').catch(() => {
                 Alert.alert(
                   language === 'es' ? 'Contacto' : 'Contact',
-                  language === 'es' ? 'Contacto: ivanlozadev@gmail.com' : 'Contact: ivanlozadev@gmail.com'
+                  language === 'es' ? 'Contacto: soporte@banana-computer.com' : 'Contact: soporte@banana-computer.com'
                 );
               });
             })}
