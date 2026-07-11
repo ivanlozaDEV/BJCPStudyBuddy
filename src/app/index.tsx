@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
+import { usePurchases } from '@/context/purchases-context';
 import { BeerBubbles } from '@/components/beer-bubbles';
 import { BeerLogo } from '@/components/beer-logo';
 import { MenuIcon } from '@/components/menu-icons';
@@ -16,6 +17,15 @@ import { MenuIcon } from '@/components/menu-icons';
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { isPro } = usePurchases();
+
+  const handleMenuPress = (route: string, id: string) => {
+    if (id === 'flashcards' && !isPro) {
+      router.push('/paywall' as any);
+    } else {
+      router.push(route as any);
+    }
+  };
 
   const menuOptions: {
     id: string;
@@ -99,7 +109,7 @@ export default function HomeScreen() {
               return (
                 <Pressable
                   key={option.id}
-                  onPress={() => router.push(option.route)}
+                  onPress={() => handleMenuPress(option.route, option.id)}
                   style={({ pressed }) => [
                     styles.menuCard,
                     { 

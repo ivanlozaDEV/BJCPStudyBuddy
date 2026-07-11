@@ -7,7 +7,7 @@ export const translations = {
     welcomeBack: '¡Hola de nuevo, Juez! 🍻',
     selectOption: 'Selecciona una herramienta',
     back: '←',
-    
+
     // Home Dashboard Cards
     exploreStyles: 'Explorar Estilos',
     exploreStylesDesc: 'Busca, filtra y estudia a fondo las guías de estilo BJCP 2021.',
@@ -20,17 +20,17 @@ export const translations = {
     glossary: 'Glosario BJCP',
     glossaryDesc: 'Domina los conceptos técnicos y sensoriales de elaboración de cerveza.',
     settingsDesc: 'Configura el idioma, respuestas hápticas y recursos oficiales del BJCP',
-    
+
     // Style Comparator
     selectStyleA: 'Seleccionar Estilo A',
     selectStyleB: 'Seleccionar Estilo B',
     vs: 'VS',
     noStylesSelected: 'Elige dos estilos para comparar sus estadísticas y perfiles de sabor frente a frente.',
     differentStats: 'Comparación Técnica de Parámetros',
-    
+
     // Off-Flavors Screen
     offFlavorTitle: 'Guía de Defectos (Off-Flavors)',
-    
+
     // Glossary Screen
     glossaryTitle: 'Glosario',
     searchGlossary: 'Buscar término o definición...',
@@ -39,7 +39,7 @@ export const translations = {
     originCauses: 'Origen y Causas',
     prevention: 'Medidas de Prevención',
     threshold: 'Umbral de Detección',
-    
+
     // Explore / Search Screen
     searchPlaceholder: 'Buscar por estilo, ID, descriptor...',
     foundStyles: 'estilos encontrados',
@@ -53,7 +53,7 @@ export const translations = {
     noResults: 'Ningún estilo coincide',
     noResultsDesc: 'Prueba buscando otros términos o elimina los filtros seleccionados.',
     studyStyle: 'Estudiar este estilo →',
-    
+
     // Style Details
     styleDetailsTitle: 'DETALLES DE ESTILO',
     srmColorVisual: 'COLOR VISUAL ESTIMADO (SRM)',
@@ -74,7 +74,7 @@ export const translations = {
     comparison: 'Comparación de Estilos',
     examples: '8. Ejemplos Comerciales',
     tags: 'Etiquetas',
-    
+
     // Flashcards Screen
     studyActive: 'Estudio Activo',
     score: 'Puntuación',
@@ -93,7 +93,7 @@ export const translations = {
     restartSession: 'Reiniciar sesión y barajar fichas 🔄',
     finishedSession: '¡Completaste todos los estilos de la sesión! Reiniciando con un nuevo orden aleatorio. 🍻',
     answeredFeedback: 'Ficha calificada. ¡Sigue así! 🚀',
-    
+
     // Settings Screen
     settings: 'Ajustes',
     profileName: 'Estudiante BJCP',
@@ -116,7 +116,7 @@ export const translations = {
     credits1: 'BrewStudy v1.0.0',
     credits2: 'Creado con amor por la cerveza y la ciencia 🌾',
     legalSection: 'AVISO LEGAL',
-    disclaimer: 'BrewStudy es una herramienta de estudio independiente y no está afiliada, respaldada ni patrocinada por el Beer Judge Certification Program (BJCP). BJCP® es una marca registrada del BJCP. El contenido se basa en las Guías de Estilo BJCP 2021 y se usa con fines educativos.',
+    disclaimer: 'BrewStudy es una herramienta de estudio independiente y no está afiliada, respaldada ni patrocinada por el Beer Judge Certification Program (BJCP). BJCP® es una marca registrada del BJCP.\n\nLas guías de estilo se usan con el permiso del BJCP y son Copyright 2021, Beer Judge Certification Program, Inc. La versión más actual de las guías se puede encontrar en su sitio web, www.bjcp.org.',
   },
   en: {
     // Navigation / General
@@ -124,7 +124,7 @@ export const translations = {
     welcomeBack: 'Welcome back, Judge! 🍻',
     selectOption: 'Select a tool',
     back: '←',
-    
+
     // Home Dashboard Cards
     exploreStyles: 'Explore Styles',
     exploreStylesDesc: 'Search, filter, and study the official BJCP 2021 style guidelines.',
@@ -137,17 +137,17 @@ export const translations = {
     glossary: 'BJCP Glossary',
     glossaryDesc: 'Master technical and sensory concepts of beer brewing.',
     settingsDesc: 'Configure language, haptic feedback, and official BJCP resources.',
-    
+
     // Style Comparator
     selectStyleA: 'Select Style A',
     selectStyleB: 'Select Style B',
     vs: 'VS',
     noStylesSelected: 'Choose two styles to compare their vital stats and flavor profiles side-by-side.',
     differentStats: 'Technical Parameter Comparison',
-    
+
     // Off-Flavors Screen
     offFlavorTitle: 'Off-Flavors Guide',
-    
+
     // Glossary Screen
     glossaryTitle: 'Glossary',
     searchGlossary: 'Search term or definition...',
@@ -156,7 +156,7 @@ export const translations = {
     originCauses: 'Origin and Causes',
     prevention: 'Prevention Measures',
     threshold: 'Detection Threshold',
-    
+
     // Explore / Search Screen
     searchPlaceholder: 'Search by style, ID, descriptor...',
     foundStyles: 'styles found',
@@ -170,7 +170,7 @@ export const translations = {
     noResults: 'No styles match',
     noResultsDesc: 'Try searching for other terms or clear selected technical filters.',
     studyStyle: 'Study this style →',
-    
+
     // Style Details
     styleDetailsTitle: 'STYLE DETAILS',
     srmColorVisual: 'ESTIMATED VISUAL COLOR (SRM)',
@@ -191,7 +191,7 @@ export const translations = {
     comparison: 'Style Comparison',
     examples: '8. Commercial Examples',
     tags: 'Tags',
-    
+
     // Flashcards Screen
     studyActive: 'Active Study',
     score: 'Score',
@@ -210,7 +210,7 @@ export const translations = {
     restartSession: 'Restart session & shuffle cards 🔄',
     finishedSession: 'You completed all styles in this session! Restarting with a new random order. 🍻',
     answeredFeedback: 'Card graded. Keep going! 🚀',
-    
+
     // Settings Screen
     settings: 'Settings',
     profileName: 'BJCP Student',
@@ -233,6 +233,6 @@ export const translations = {
     credits1: 'BrewStudy v1.0.0',
     credits2: 'Created with love for beer and science 🌾',
     legalSection: 'LEGAL',
-    disclaimer: 'BrewStudy is an independent study tool and is not affiliated with, endorsed by, or sponsored by the Beer Judge Certification Program (BJCP). BJCP® is a registered trademark of the BJCP. Content is based on the 2021 BJCP Style Guidelines, used for educational purposes.',
+    disclaimer: 'BrewStudy is an independent study tool and is not affiliated with, endorsed by, or sponsored by the Beer Judge Certification Program (BJCP). BJCP® is a registered trademark of the BJCP.\n\nStyle guidelines are used with the permission of the BJCP, and are Copyright 2021, Beer Judge Certification Program, Inc. The most current guidelines can be found on their website, www.bjcp.org.',
   }
 };
