@@ -11,6 +11,7 @@ import { IBMPlexSans_400Regular, IBMPlexSans_600SemiBold } from '@expo-google-fo
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LanguageProvider } from '@/context/language-context';
+import { PurchasesProvider } from '@/context/purchases-context';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLastRoute } from '@/hooks/use-last-route';
@@ -43,16 +44,18 @@ export default function TabLayout() {
   return (
     <SafeAreaProvider>
       <LanguageProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <StatusBar style="dark" />
-          <AnimatedSplashOverlay />
-          <Stack screenOptions={{ 
-            headerShown: false, 
-            animation: 'slide_from_right',
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true 
-          }} />
-        </ThemeProvider>
+        <PurchasesProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <StatusBar style="dark" />
+            <AnimatedSplashOverlay />
+            <Stack screenOptions={{ 
+              headerShown: false, 
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true 
+            }} />
+          </ThemeProvider>
+        </PurchasesProvider>
       </LanguageProvider>
     </SafeAreaProvider>
   );
