@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Colors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
+import { usePurchases } from '@/context/purchases-context';
 import { BeerStyle, getBJCPStyles } from '@/data/bjcp2021';
 import { GLOSSARY_DATA, GlossaryTerm } from '@/data/glossary';
 import { OFF_FLAVORS_DATA, OffFlavor } from '@/data/offflavors';
@@ -55,8 +56,16 @@ type FcState = 'lobby' | 'playing';
 
 export default function FlashcardsScreen() {
   const theme = useTheme();
-  const { language } = useTranslation();
+  const { t, language } = useTranslation();
+  const { isPro } = usePurchases();
   const router = useRouter();
+
+  // Route protection
+  useEffect(() => {
+    if (!isPro) {
+      router.replace('/paywall' as any);
+    }
+  }, [isPro]);
 
   // Mode Selection
   const [studyMode, setStudyMode] = usePersistentState<StudyMode>('@bjcp_study_mode', 'quiz');
