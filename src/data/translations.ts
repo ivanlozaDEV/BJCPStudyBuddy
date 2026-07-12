@@ -116,7 +116,7 @@ export const translations = {
     credits1: 'BrewStudy v1.0.0',
     credits2: 'Creado con amor por la cerveza y la ciencia 🌾',
     legalSection: 'AVISO LEGAL',
-    disclaimer: 'BrewStudy es una herramienta de estudio independiente y no está afiliada, respaldada ni patrocinada por el Beer Judge Certification Program (BJCP). BJCP® es una marca registrada del BJCP. El contenido se basa en las Guías de Estilo BJCP 2021 y se usa con fines educativos.',
+    disclaimer: 'BrewStudy es una herramienta de estudio independiente y no está afiliada, respaldada ni patrocinada por el Beer Judge Certification Program (BJCP). BJCP® es una marca registrada del BJCP. El contenido se basa en las Guías de Estilo BJCP 2021 y se usa con fines educativos. The style guidelines are used with the permission of the BJCP, and are Copyright 2021, Beer Judge Certification Program, Inc.',
   },
   en: {
     // Navigation / General
@@ -233,6 +233,6 @@ export const translations = {
     credits1: 'BrewStudy v1.0.0',
     credits2: 'Created with love for beer and science 🌾',
     legalSection: 'LEGAL',
-    disclaimer: 'BrewStudy is an independent study tool and is not affiliated with, endorsed by, or sponsored by the Beer Judge Certification Program (BJCP). BJCP® is a registered trademark of the BJCP. Content is based on the 2021 BJCP Style Guidelines, used for educational purposes.',
+    disclaimer: 'BrewStudy is an independent study tool and is not affiliated with, endorsed by, or sponsored by the Beer Judge Certification Program (BJCP). BJCP® is a registered trademark of the BJCP. Content is based on the 2021 BJCP Style Guidelines, used for educational purposes. The style guidelines are used with the permission of the BJCP, and are Copyright 2021, Beer Judge Certification Program, Inc.',
   }
 };
