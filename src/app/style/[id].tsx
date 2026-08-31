@@ -4,16 +4,19 @@ import {
   Pressable, 
   View, 
   ScrollView, 
-  Text
+  Text,
+  Image,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 
 import { DetailIcon } from '@/components/detail-icons';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing, Fonts, BottomTabInset } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
+import { useTastings } from '@/context/tastings-context';
+import { getQualityTier } from '@/types/tasting';
 import { 
   BeerStyle, 
   getBJCPStyles 
@@ -26,8 +29,10 @@ export default function StyleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const { t, language } = useTranslation();
+  const { getTastingsByStyle } = useTastings();
 
   const selectedStyle = getBJCPStyles(language).find(s => s.id === id);
+  const styleTastings = selectedStyle ? getTastingsByStyle(selectedStyle.id) : [];
 
   // Modal States
   const [linkChoiceModalVisible, setLinkChoiceModalVisible] = useState(false);
@@ -655,6 +660,91 @@ export default function StyleDetailScreen() {
                         })}
                       </Text>
                     </View>
+                  </View>
+
+                  {/* Mis Catas de este Estilo Section */}
+                  <View style={[styles.detailCard, styles.tastingsCard]}>
+                    <View style={styles.detailHeaderRow}>
+                      <ThemedText style={{ fontSize: 20 }}>🍺</ThemedText>
+                      <Text style={styles.detailHeading}>
+                        {t('myTastingsForStyle')} ({styleTastings.length})
+                      </Text>
+                    </View>
+
+                    {styleTastings.length > 0 ? (
+                      <View style={styles.styleTastingsList}>
+                        {styleTastings.map((tasting) => {
+                          const quality = getQualityTier(tasting.totalScore);
+                          return (
+                            <Pressable
+                              key={tasting.id}
+                              onPress={() =>
+                                router.push({
+                                  pathname: '/tasting-detail' as any,
+                                  params: { id: tasting.id },
+                                })
+                              }
+                              style={styles.styleTastingItem}
+                            >
+                              {tasting.photoUrl ? (
+                                <Image
+                                  source={{ uri: tasting.photoUrl }}
+                                  style={styles.styleTastingThumb}
+                                />
+                              ) : (
+                                <View style={styles.styleTastingThumbPlaceholder}>
+                                  <ThemedText style={{ fontSize: 16 }}>🍺</ThemedText>
+                                </View>
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <ThemedText style={styles.styleTastingBeerName} numberOfLines={1}>
+                                  {tasting.beerName}
+                                </ThemedText>
+                                <ThemedText style={styles.styleTastingBrewery} numberOfLines={1}>
+                                  {tasting.brewery || '—'}
+                                </ThemedText>
+                              </View>
+                              <View
+                                style={[
+                                  styles.styleTastingScoreBadge,
+                                  { backgroundColor: quality.color + '25', borderColor: quality.color },
+                                ]}
+                              >
+                                <ThemedText
+                                  style={[styles.styleTastingScoreText, { color: quality.color }]}
+                                >
+                                  {tasting.totalScore}/50
+                                </ThemedText>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <ThemedText style={styles.noTastingsYetText}>
+                        {language === 'es'
+                          ? 'Aún no has registrado ninguna cata de este estilo.'
+                          : 'No tastings recorded yet for this style.'}
+                      </ThemedText>
+                    )}
+
+                    {/* Quick Evaluate Button */}
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: '/judge-simulator' as any,
+                          params: { styleId: selectedStyle.id },
+                        })
+                      }
+                      style={({ pressed }) => [
+                        styles.evalStyleBtn,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      <ThemedText style={styles.evalStyleBtnText}>
+                        + {t('evaluateThisStyle')}
+                      </ThemedText>
+                    </Pressable>
                   </View>
 
                 </View>
@@ -1625,5 +1715,76 @@ const styles = StyleSheet.create({
   offFlavorSectionText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  tastingsCard: {
+    backgroundColor: '#F7FAFC',
+    borderColor: 'rgba(47, 93, 115, 0.25)',
+    borderWidth: 1.5,
+  },
+  styleTastingsList: {
+    gap: 8,
+    marginTop: 8,
+  },
+  styleTastingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  styleTastingThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  styleTastingThumbPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#EDF2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  styleTastingBeerName: {
+    color: '#0A0C10',
+    fontSize: 14,
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  styleTastingBrewery: {
+    color: '#718096',
+    fontSize: 11,
+    fontFamily: Fonts.inter,
+  },
+  styleTastingScoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  styleTastingScoreText: {
+    fontSize: 12,
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  noTastingsYetText: {
+    color: '#718096',
+    fontSize: 13,
+    fontFamily: Fonts.inter,
+    marginVertical: 6,
+  },
+  evalStyleBtn: {
+    backgroundColor: '#2F5D73',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  evalStyleBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: Fonts.spaceGroteskBold,
   },
 });

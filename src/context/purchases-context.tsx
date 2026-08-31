@@ -1,20 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, { LOG_LEVEL, CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 
-// IMPORTANT: Replace these with your actual RevenueCat Public API Keys
-const API_KEYS = {
-  apple: 'appl_YOUR_APPLE_API_KEY_HERE',
-  google: 'goog_YOUR_GOOGLE_API_KEY_HERE',
-};
-
-// Replace with your RevenueCat Entitlement ID
-const ENTITLEMENT_ID = 'pro'; 
+// No RevenueCat account yet, mocking with AsyncStorage
+const IS_PRO_KEY = '@bjcp_is_pro_status';
 
 interface PurchasesContextData {
   isPro: boolean;
   packages: PurchasesPackage[];
-  purchasePackage: (pack: PurchasesPackage) => Promise<boolean>;
+  purchasePackage: () => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
   isLoading: boolean;
 }
@@ -29,20 +23,9 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function initPurchases() {
       try {
-        if (Platform.OS === 'ios') {
-          Purchases.configure({ apiKey: API_KEYS.apple });
-        } else if (Platform.OS === 'android') {
-          Purchases.configure({ apiKey: API_KEYS.google });
-        }
-        
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-
-        const customerInfo = await Purchases.getCustomerInfo();
-        updateCustomerState(customerInfo);
-
-        const offerings = await Purchases.getOfferings();
-        if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-          setPackages(offerings.current.availablePackages);
+        const proStatus = await AsyncStorage.getItem(IS_PRO_KEY);
+        if (proStatus === 'true') {
+          setIsPro(true);
         }
       } catch (e) {
         console.error('Error initializing purchases', e);
@@ -50,34 +33,16 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }
-
     initPurchases();
-
-    // Listen for changes in purchaser info
-    Purchases.addCustomerInfoUpdateListener((info) => {
-      updateCustomerState(info);
-    });
-
   }, []);
 
-  const updateCustomerState = (customerInfo: CustomerInfo) => {
-    if (typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined') {
-      setIsPro(true);
-    } else {
-      setIsPro(false);
-    }
-  };
-
-  const purchasePackage = async (pack: PurchasesPackage): Promise<boolean> => {
+  const purchasePackage = async (): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const { customerInfo } = await Purchases.purchasePackage(pack);
-      updateCustomerState(customerInfo);
-      return typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+      await AsyncStorage.setItem(IS_PRO_KEY, 'true');
+      setIsPro(true);
+      return true;
     } catch (e: any) {
-      if (!e.userCancelled) {
-        console.error('Error purchasing package', e);
-      }
       return false;
     } finally {
       setIsLoading(false);
@@ -87,11 +52,13 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const restorePurchases = async (): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const customerInfo = await Purchases.restorePurchases();
-      updateCustomerState(customerInfo);
-      return typeof customerInfo.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+      const proStatus = await AsyncStorage.getItem(IS_PRO_KEY);
+      if (proStatus === 'true') {
+        setIsPro(true);
+        return true;
+      }
+      return false;
     } catch (e) {
-      console.error('Error restoring purchases', e);
       return false;
     } finally {
       setIsLoading(false);

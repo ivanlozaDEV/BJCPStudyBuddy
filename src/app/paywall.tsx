@@ -11,14 +11,15 @@ import { useTranslation } from '@/context/language-context';
 import { usePurchases } from '@/context/purchases-context';
 import { BeerBubbles } from '@/components/beer-bubbles';
 import { BeerLogo } from '@/components/beer-logo';
+import { MenuIcon } from '@/components/menu-icons';
 
 export default function PaywallScreen() {
   const theme = useTheme();
   const { language } = useTranslation();
-  const { packages, purchasePackage, restorePurchases, isLoading } = usePurchases();
+  const { purchasePackage, restorePurchases, isLoading } = usePurchases();
 
-  const handlePurchase = async (pack: any) => {
-    const success = await purchasePackage(pack);
+  const handlePurchase = async () => {
+    const success = await purchasePackage();
     if (success) {
       Alert.alert(
         language === 'es' ? '¡Felicidades!' : 'Congratulations!',
@@ -75,48 +76,38 @@ export default function PaywallScreen() {
 
           <View style={styles.featuresList}>
             <FeatureRow 
-              icon="🧠" 
-              title={language === 'es' ? 'Flashcards Inteligentes' : 'Smart Flashcards'} 
-              desc={language === 'es' ? 'Practica estilos, estadísticas y glosario con tarjetas interactivas.' : 'Practice styles, stats, and glossary with interactive cards.'}
+              icon="myTastings" 
+              title={language === 'es' ? 'Mis Catas & Simulador de Juez' : 'My Tastings & Judge Simulator'} 
+              desc={language === 'es' ? 'Ficha estructurada oficial de 50 puntos, escalas continuas, fotos y sincronización en la nube.' : 'Official 50-point structured scoresheet, continuous sliders, photo capture and cloud sync.'}
             />
             <FeatureRow 
-              icon="🎯" 
-              title={language === 'es' ? 'Quizzes Generados por IA' : 'AI-Generated Quizzes'} 
-              desc={language === 'es' ? 'Exámenes de opción múltiple algorítmicos basados en los parámetros del BJCP.' : 'Algorithmic multiple-choice exams based on BJCP parameters.'}
+              icon="flashcards" 
+              title={language === 'es' ? 'Flashcards & Simulador de Examen' : 'Flashcards & Exam Simulator'} 
+              desc={language === 'es' ? 'Algoritmo de repetición espaciada y exámenes interactivos para preparar tu certificación.' : 'Spaced repetition and interactive exams to prepare for your certification.'}
             />
             <FeatureRow 
-              icon="📈" 
-              title={language === 'es' ? 'Seguimiento de Progreso' : 'Progress Tracking'} 
-              desc={language === 'es' ? 'Identifica tus puntos débiles y mejora tu puntuación.' : 'Identify your weak spots and improve your score.'}
+              icon="comparator" 
+              title={language === 'es' ? 'Comparador Avanzado de Estilos' : 'Advanced Style Comparator'} 
+              desc={language === 'es' ? 'Compara parámetros vitales, SRM, perfiles aromáticos y diferencias técnicas frente a frente.' : 'Compare vital statistics, SRM color, aroma profiles, and style differences side-by-side.'}
             />
           </View>
 
           <View style={styles.purchaseSection}>
             {isLoading ? (
               <ActivityIndicator size="large" color="#FFFFFF" style={{ marginVertical: 20 }} />
-            ) : packages.length > 0 ? (
-              packages.map((pack) => (
-                <Pressable
-                  key={pack.identifier}
-                  style={({ pressed }) => [
-                    styles.purchaseButton,
-                    { backgroundColor: theme.accent },
-                    pressed && { opacity: 0.8 }
-                  ]}
-                  onPress={() => handlePurchase(pack)}
-                >
-                  <ThemedText style={styles.purchaseButtonText}>
-                    {language === 'es' ? 'Desbloquear por ' : 'Unlock for '} 
-                    {pack.product.priceString}
-                  </ThemedText>
-                </Pressable>
-              ))
             ) : (
-              <ThemedText style={styles.errorText}>
-                {language === 'es' 
-                  ? 'Las opciones de compra no están disponibles en este momento.' 
-                  : 'Purchase options are not available at this time.'}
-              </ThemedText>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.purchaseButton,
+                  { backgroundColor: theme.accent },
+                  pressed && { opacity: 0.8 }
+                ]}
+                onPress={handlePurchase}
+              >
+                <ThemedText style={styles.purchaseButtonText}>
+                  {language === 'es' ? 'Desbloquear PRO Ahora' : 'Unlock PRO Now'} 
+                </ThemedText>
+              </Pressable>
             )}
 
             <Pressable onPress={handleRestore} style={({pressed}) => [styles.restoreButton, pressed && {opacity: 0.7}]}>
@@ -140,10 +131,12 @@ export default function PaywallScreen() {
   );
 }
 
-function FeatureRow({ icon, title, desc }: { icon: string, title: string, desc: string }) {
+function FeatureRow({ icon, title, desc }: { icon: any, title: string, desc: string }) {
   return (
     <View style={styles.featureRow}>
-      <ThemedText style={styles.featureIcon}>{icon}</ThemedText>
+      <View style={styles.featureIconContainer}>
+        <MenuIcon name={icon} />
+      </View>
       <View style={styles.featureTextContainer}>
         <ThemedText style={styles.featureTitle}>{title}</ThemedText>
         <ThemedText style={styles.featureDesc}>{desc}</ThemedText>
@@ -192,6 +185,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
+    lineHeight: 44,
     fontFamily: Fonts.spaceGroteskBold,
     color: '#FFF',
     marginTop: Spacing.four,
@@ -217,9 +211,12 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.three,
   },
-  featureIcon: {
-    fontSize: 32,
+  featureIconContainer: {
     marginRight: Spacing.four,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   featureTextContainer: {
     flex: 1,

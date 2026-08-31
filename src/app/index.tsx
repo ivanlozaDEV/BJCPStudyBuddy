@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Pressable, View, Text } from 'react-native';
+import { ScrollView, StyleSheet, Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -12,15 +12,15 @@ import { useTranslation } from '@/context/language-context';
 import { usePurchases } from '@/context/purchases-context';
 import { BeerBubbles } from '@/components/beer-bubbles';
 import { BeerLogo } from '@/components/beer-logo';
-import { MenuIcon } from '@/components/menu-icons';
+import { MenuIcon, MenuIconProps } from '@/components/menu-icons';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
   const { isPro } = usePurchases();
 
-  const handleMenuPress = (route: string, id: string) => {
-    if (id === 'flashcards' && !isPro) {
+  const handleMenuPress = (route: string, isProFeature: boolean) => {
+    if (isProFeature && !isPro) {
       router.push('/paywall' as any);
     } else {
       router.push(route as any);
@@ -31,29 +31,18 @@ export default function HomeScreen() {
     id: string;
     title: string;
     description: string;
-    icon: 'explore' | 'comparator' | 'offflavors' | 'flashcards' | 'settings' | 'glossary';
-    route: '/explore' | '/comparator' | '/offflavors' | '/flashcards' | '/settings' | '/glossary';
+    icon: MenuIconProps['name'];
+    route: string;
+    isPro: boolean;
   }[] = [
-    {
-      id: 'flashcards',
-      title: t('flashcards'),
-      description: t('flashcardsDesc'),
-      icon: 'flashcards',
-      route: '/flashcards',
-    },
+    // --- HERRAMIENTAS GRATUITAS (Free Tools) ---
     {
       id: 'explore',
       title: t('exploreStyles'),
       description: t('exploreStylesDesc'),
       icon: 'explore',
       route: '/explore',
-    },
-    {
-      id: 'comparator',
-      title: t('styleComparator'),
-      description: t('styleComparatorDesc'),
-      icon: 'comparator',
-      route: '/comparator',
+      isPro: false,
     },
     {
       id: 'offflavors',
@@ -61,6 +50,7 @@ export default function HomeScreen() {
       description: t('offFlavorsDesc'),
       icon: 'offflavors',
       route: '/offflavors',
+      isPro: false,
     },
     {
       id: 'glossary',
@@ -68,13 +58,41 @@ export default function HomeScreen() {
       description: t('glossaryDesc'),
       icon: 'glossary',
       route: '/glossary',
+      isPro: false,
     },
+    {
+      id: 'comparator',
+      title: t('styleComparator'),
+      description: t('styleComparatorDesc'),
+      icon: 'comparator',
+      route: '/comparator',
+      isPro: true,
+    },
+    // --- HERRAMIENTAS PRO (PRO Tools) ---
+    {
+      id: 'myTastings',
+      title: t('myTastings'),
+      description: t('myTastingsDesc'),
+      icon: 'myTastings',
+      route: '/tastings',
+      isPro: true,
+    },
+    {
+      id: 'flashcards',
+      title: t('flashcards'),
+      description: t('flashcardsDesc'),
+      icon: 'flashcards',
+      route: '/flashcards',
+      isPro: true,
+    },
+    // --- CONFIGURACIÓN (Settings) ---
     {
       id: 'settings',
       title: t('settings'),
       description: t('settingsDesc'),
       icon: 'settings',
       route: '/settings',
+      isPro: false,
     },
   ];
 
@@ -85,11 +103,11 @@ export default function HomeScreen() {
       <BeerBubbles />
 
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent} 
-            showsVerticalScrollIndicator={false}
-          >
-          {/* Magnificent Centered Hero Branding Area */}
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Centered Hero Branding Area */}
           <View style={styles.heroContainer}>
             <View style={styles.heroRow}>
               <BeerLogo size={105} />
@@ -103,18 +121,18 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
 
-          {/* Interactive Stack of 4 Menu Cards */}
+          {/* Interactive Stack of Menu Cards */}
           <View style={styles.menuStack}>
             {menuOptions.map((option) => {
               return (
                 <Pressable
                   key={option.id}
-                  onPress={() => handleMenuPress(option.route, option.id)}
+                  onPress={() => handleMenuPress(option.route, option.isPro)}
                   style={({ pressed }) => [
                     styles.menuCard,
                     { 
                       backgroundColor: theme.backgroundElement, 
-                      borderColor: theme.border 
+                      borderColor: option.isPro ? 'rgba(242, 184, 36, 0.4)' : theme.border 
                     },
                     pressed && styles.cardPressed
                   ]}
@@ -127,9 +145,16 @@ export default function HomeScreen() {
                   
                   <View style={styles.cardContent}>
                     <View style={styles.cardTitleRow}>
-                      <ThemedText type="smallBold" style={styles.cardTitle}>
-                        {option.title}
-                      </ThemedText>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <ThemedText type="smallBold" style={styles.cardTitle}>
+                          {option.title}
+                        </ThemedText>
+                        {option.isPro && (
+                          <View style={styles.proBadge}>
+                            <ThemedText style={styles.proBadgeText}>PRO</ThemedText>
+                          </View>
+                        )}
+                      </View>
                       <ThemedText style={[styles.arrowIcon, { color: theme.tint }]}>➔</ThemedText>
                     </View>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.cardDescription}>
@@ -141,10 +166,10 @@ export default function HomeScreen() {
             })}
           </View>
 
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
-    );
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -169,8 +194,8 @@ const styles = StyleSheet.create({
   heroContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.five,
-    marginTop: Spacing.four,
+    marginBottom: Spacing.four,
+    marginTop: Spacing.three,
   },
   heroRow: {
     flexDirection: 'row',
@@ -181,7 +206,7 @@ const styles = StyleSheet.create({
   heroTextColumn: {
     flexDirection: 'column',
     justifyContent: 'center',
-    paddingTop: Spacing.two, // Visual alignment
+    paddingTop: Spacing.two,
   },
   appNameTop: {
     fontSize: 56,
@@ -198,22 +223,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: Fonts.spaceGrotesk,
     letterSpacing: -1.0,
-    marginTop: -8, // Tighten up the stack
+    marginTop: -8,
   },
   subtitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.75)', // Breathtaking high-contrast light white
-    letterSpacing: 2.5, // Sleeker letter spacing tracking
+    color: 'rgba(255, 255, 255, 0.75)',
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginTop: Spacing.three, // Push down subtitle for breathing room
+    marginTop: Spacing.two,
   },
   menuStack: {
     gap: Spacing.three,
-    width: '88%', // Compressed horizontally for a centered iOS card list look
+    width: '92%',
     alignSelf: 'center',
-    maxWidth: 550, // Technical responsive max width
+    maxWidth: 550,
   },
   menuCard: {
     flexDirection: 'row',
@@ -241,9 +266,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardIcon: {
-    fontSize: 22,
-  },
   cardContent: {
     flex: 1,
     justifyContent: 'center',
@@ -254,8 +276,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+  },
+  proBadge: {
+    backgroundColor: '#F2B824',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  proBadgeText: {
+    color: '#161B22',
+    fontSize: 9,
+    fontFamily: Fonts.manropeBold,
+    fontWeight: '800',
   },
   arrowIcon: {
     fontSize: 16,
