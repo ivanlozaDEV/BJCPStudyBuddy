@@ -1,4 +1,4 @@
-# 🍺 BrewStudy — BJCP Study Buddy
+# 🍺 BrewStudy
 
 A premium, offline-first study companion and guide for the Beer Judge Certification Program (BJCP), built with Expo, React Native, and React Native Reanimated.
 

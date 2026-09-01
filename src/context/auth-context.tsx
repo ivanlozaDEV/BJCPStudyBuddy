@@ -14,6 +14,9 @@ interface AuthContextData {
   profile: UserProfile;
   guestId: string;
   isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, fullName?: string, bjcpRank?: string) => Promise<{ error?: string; user?: User | null }>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -91,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchSupabaseProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -100,17 +103,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const updated: UserProfile = {
           id: data.id,
           email: data.email,
-          fullName: data.full_name || profile.fullName,
-          avatarUrl: data.avatar_url,
-          bjcpRank: data.bjcp_rank || 'Apprentice',
+          fullName: data.display_name || profile.fullName,
+          bjcpRank: data.judge_level || 'Apprentice',
           bjcpId: data.bjcp_id,
-          experienceLevel: data.experience_level,
+          experienceLevel: profile.experienceLevel,
         };
         setProfile(updated);
         await AsyncStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updated));
       }
     } catch (e) {
       console.warn('Failed to fetch profile from Supabase:', e);
+    }
+  };
+
+  const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    if (!isSupabaseConfigured()) {
+      return { error: 'Supabase no está configurado aún con credenciales válidas.' };
+    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) return { error: error.message };
+      if (data.user) {
+        setUser(data.user);
+        setSession(data.session);
+        await fetchSupabaseProfile(data.user.id);
+      }
+      return {};
+    } catch (e: any) {
+      return { error: e?.message || 'Error al iniciar sesión' };
+    }
+  };
+
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName?: string,
+    bjcpRank?: string
+  ): Promise<{ error?: string; user?: User | null }> => {
+    if (!isSupabaseConfigured()) {
+      return { error: 'Supabase no está configurado aún con credenciales válidas.' };
+    }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: fullName?.trim() || email.split('@')[0],
+            judge_level: bjcpRank || 'Apprentice',
+          },
+        },
+      });
+      if (error) return { error: error.message };
+      if (data.user) {
+        setUser(data.user);
+        setSession(data.session);
+        if (fullName || bjcpRank) {
+          await updateProfile({
+            fullName: fullName || profile.fullName,
+            bjcpRank: (bjcpRank as any) || profile.bjcpRank,
+            email: data.user.email,
+          });
+        }
+      }
+      return { user: data.user };
+    } catch (e: any) {
+      return { error: e?.message || 'Error al registrarse' };
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<{ error?: string }> => {
+    if (!isSupabaseConfigured()) {
+      return { error: 'Supabase no está configurado aún con credenciales válidas.' };
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) return { error: error.message };
+      return {};
+    } catch (e: any) {
+      return { error: e?.message || 'Error al enviar correo de recuperación' };
     }
   };
 
@@ -121,13 +195,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (isSupabaseConfigured() && user) {
       try {
-        await supabase.from('user_profiles').upsert({
+        await supabase.from('profiles').upsert({
           id: user.id,
-          full_name: updated.fullName,
-          avatar_url: updated.avatarUrl,
-          bjcp_rank: updated.bjcpRank,
+          display_name: updated.fullName,
+          judge_level: updated.bjcpRank,
           bjcp_id: updated.bjcpId,
-          experience_level: updated.experienceLevel,
           updated_at: new Date().toISOString(),
         });
       } catch (e) {
@@ -143,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile({ ...defaultProfile, id: guestId });
+    await AsyncStorage.removeItem(LOCAL_USER_KEY);
   };
 
   return (
@@ -153,6 +226,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         guestId,
         isLoading,
+        signIn,
+        signUp,
+        resetPassword,
         updateProfile,
         signOut,
       }}

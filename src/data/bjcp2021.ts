@@ -158,7 +158,7 @@ export function getBJCPStyles(lang: 'es' | 'en'): BeerStyle[] {
 // 4. Backward-compatible static default array mapping (defaults to Spanish)
 export const BJCP_2021_DATA: BeerStyle[] = BILINGUAL_BJCP_DATA.map(style => localizeStyle(style, 'es'));
 
-// Helper Functions for BJCP Study Buddy App
+// Helper Functions for BrewStudy App
 
 export function getBeerStyleById(id: string, lang: 'es' | 'en' = 'es'): BeerStyle | undefined {
   const found = BILINGUAL_BJCP_DATA.find(style => style.id.toLowerCase() === id.toLowerCase());

@@ -3,7 +3,7 @@ export type Language = 'es' | 'en';
 export const translations = {
   es: {
     // Navigation / General
-    appName: 'BJCP Study Buddy',
+    appName: 'BrewStudy',
     welcomeBack: '¡Hola de nuevo, Juez! 🍻',
     selectOption: 'Selecciona una herramienta',
     back: '←',
@@ -180,7 +180,7 @@ export const translations = {
   },
   en: {
     // Navigation / General
-    appName: 'BJCP Study Buddy',
+    appName: 'BrewStudy',
     welcomeBack: 'Welcome back, Judge! 🍻',
     selectOption: 'Select a tool',
     back: '←',

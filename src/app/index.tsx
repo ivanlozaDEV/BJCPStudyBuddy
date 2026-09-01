@@ -113,7 +113,9 @@ export default function HomeScreen() {
               <BeerLogo size={105} />
               <View style={styles.heroTextColumn}>
                 <ThemedText style={styles.appNameTop}>BREW</ThemedText>
-                <ThemedText style={styles.appNameBottom}>Study</ThemedText>
+                <ThemedText style={styles.appNameBottom}>
+                  Study {isPro && <ThemedText style={{ color: '#F2B824', fontSize: 20 }}>PRO</ThemedText>}
+                </ThemedText>
               </View>
             </View>
             <ThemedText style={styles.subtitle}>
@@ -132,7 +134,7 @@ export default function HomeScreen() {
                     styles.menuCard,
                     { 
                       backgroundColor: theme.backgroundElement, 
-                      borderColor: option.isPro ? 'rgba(242, 184, 36, 0.4)' : theme.border 
+                      borderColor: (option.isPro && !isPro) ? 'rgba(242, 184, 36, 0.4)' : theme.border 
                     },
                     pressed && styles.cardPressed
                   ]}
@@ -149,7 +151,7 @@ export default function HomeScreen() {
                         <ThemedText type="smallBold" style={styles.cardTitle}>
                           {option.title}
                         </ThemedText>
-                        {option.isPro && (
+                        {option.isPro && !isPro && (
                           <View style={styles.proBadge}>
                             <ThemedText style={styles.proBadgeText}>PRO</ThemedText>
                           </View>

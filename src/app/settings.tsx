@@ -19,6 +19,7 @@ import { BottomTabInset, MaxContentWidth, Spacing, Fonts } from '@/constants/the
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/context/language-context';
 import { useAuth } from '@/context/auth-context';
+import { usePurchases } from '@/context/purchases-context';
 import { useTastings } from '@/context/tastings-context';
 import { isSupabaseConfigured } from '@/services/supabase';
 
@@ -34,7 +35,8 @@ const BJCP_RANKS = [
 export default function SettingsScreen() {
   const theme = useTheme();
   const { t, language, setLanguage } = useTranslation();
-  const { profile, updateProfile, user } = useAuth();
+  const { profile, updateProfile, user, signOut } = useAuth();
+  const { isPro, presentCustomerCenter } = usePurchases();
   const { syncWithCloud } = useTastings();
 
   // Edit Profile Modal State
@@ -194,7 +196,43 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Judge Profile Card */}
+          {/* Group 0: Subscription Status */}
+          <View style={styles.sectionHeader}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
+              {language === 'es' ? 'Suscripción' : 'Subscription'}
+            </ThemedText>
+          </View>
+          <ThemedView type="backgroundElement" style={styles.settingsGroup}>
+            <Pressable
+              onPress={() => {
+                if (isPro) {
+                  presentCustomerCenter();
+                } else {
+                  router.push('/paywall' as any);
+                }
+              }}
+              style={styles.profileRow}
+            >
+              <View style={[styles.profileAvatar, { backgroundColor: isPro ? '#F2B824' : 'rgba(255, 255, 255, 0.15)' }]}>
+                <ThemedText style={{ fontSize: 22 }}>⭐</ThemedText>
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.profileNameText}>
+                  {isPro ? 'BrewStudy PRO' : (language === 'es' ? 'Plan Gratuito' : 'Free Plan')}
+                </ThemedText>
+                <ThemedText style={styles.profileRankText}>
+                  {isPro
+                    ? (language === 'es' ? 'Acceso Ilimitado Activado' : 'Full Pro Access Active')
+                    : (language === 'es' ? 'Toca para ver ventajas PRO' : 'Tap to explore PRO features')}
+                </ThemedText>
+              </View>
+              <ThemedText style={[styles.editProfilePill, isPro && { backgroundColor: '#52B788' }]}>
+                {isPro ? (language === 'es' ? 'Activo' : 'Active') : (language === 'es' ? 'Ver PRO' : 'Upgrade')}
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+
+          {/* Judge Profile & Cloud Account */}
           <View style={styles.sectionHeader}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
               {t('accountAndSync')}
@@ -221,12 +259,80 @@ export default function SettingsScreen() {
               </View>
               <ThemedText style={styles.editProfilePill}>{t('editProfile')}</ThemedText>
             </Pressable>
+
             <View style={styles.divider} />
-            {renderSettingRow(
-              "☁️",
-              t('syncStatus'),
-              isSupabaseConfigured() ? (user ? t('synced') : 'Conectado (Invitado)') : t('offlineMode'),
-              handleManualSync
+
+            {isPro ? (
+              user ? (
+                <>
+                  {renderSettingRow(
+                    "👤",
+                    language === 'es' ? 'Cuenta PRO en la Nube' : 'PRO Cloud Account',
+                    user.email || undefined
+                  )}
+                  <View style={styles.divider} />
+                  {renderSettingRow(
+                    "☁️",
+                    t('syncStatus'),
+                    t('synced'),
+                    handleManualSync
+                  )}
+                  <View style={styles.divider} />
+                  {renderSettingRow(
+                    "🚪",
+                    language === 'es' ? 'Cerrar Sesión' : 'Sign Out',
+                    undefined,
+                    () => {
+                      Alert.alert(
+                        language === 'es' ? 'Cerrar Sesión' : 'Sign Out',
+                        language === 'es'
+                          ? '¿Estás seguro de que deseas cerrar sesión? Tus datos locales se mantendrán en el dispositivo.'
+                          : 'Are you sure you want to sign out? Your local data will remain on this device.',
+                        [
+                          { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+                          {
+                            text: language === 'es' ? 'Cerrar Sesión' : 'Sign Out',
+                            style: 'destructive',
+                            onPress: () => signOut(),
+                          },
+                        ]
+                      );
+                    }
+                  )}
+                </>
+              ) : (
+                <>
+                  {renderSettingRow(
+                    "☁️",
+                    language === 'es' ? 'Activar Copia en la Nube' : 'Activate Cloud Backup',
+                    language === 'es' ? 'Iniciar Sesión / Registro' : 'Sign In / Sign Up',
+                    () => router.push('/auth' as any)
+                  )}
+                  <View style={styles.divider} />
+                  {renderSettingRow(
+                    "🔄",
+                    t('syncStatus'),
+                    isSupabaseConfigured() ? 'Listo para Sincronizar' : t('offlineMode'),
+                    handleManualSync
+                  )}
+                </>
+              )
+            ) : (
+              <>
+                {renderSettingRow(
+                  "☁️",
+                  language === 'es' ? 'Sincronización en la Nube' : 'Cloud Backup & Sync',
+                  language === 'es' ? '⭐ Función PRO' : '⭐ PRO Feature',
+                  () => router.push('/paywall' as any)
+                )}
+                <View style={styles.divider} />
+                {renderSettingRow(
+                  "💾",
+                  t('syncStatus'),
+                  language === 'es' ? 'Modo Local (Gratis)' : 'Local Storage (Free)',
+                  handleManualSync
+                )}
+              </>
             )}
           </ThemedView>
 
@@ -303,6 +409,19 @@ export default function SettingsScreen() {
             <ThemedText style={styles.disclaimerText}>
               {t('disclaimer')}
             </ThemedText>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 12 }}>
+              <Pressable onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                <ThemedText style={{ fontSize: 12, color: theme.tint, textDecorationLine: 'underline' }}>
+                  {language === 'es' ? 'Términos de Uso' : 'Terms of Service'}
+                </ThemedText>
+              </Pressable>
+              <ThemedText style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.4)' }}>•</ThemedText>
+              <Pressable onPress={() => Linking.openURL('https://www.banana-computer.com/brew-study/privacy-policy')}>
+                <ThemedText style={{ fontSize: 12, color: theme.tint, textDecorationLine: 'underline' }}>
+                  {language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
+                </ThemedText>
+              </Pressable>
+            </View>
           </View>
 
           {/* App Credits */}

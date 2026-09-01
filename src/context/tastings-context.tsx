@@ -4,6 +4,7 @@ import * as Crypto from 'expo-crypto';
 import { TastingNote, calculateTotalScore } from '@/types/tasting';
 import { supabase, isSupabaseConfigured, uploadBeerPhoto } from '@/services/supabase';
 import { useAuth } from './auth-context';
+import { usePurchases } from './purchases-context';
 
 const LOCAL_TASTINGS_KEY = '@bjcp_tastings_history';
 
@@ -27,6 +28,7 @@ const TastingsContext = createContext<TastingsContextData | null>(null);
 
 export function TastingsProvider({ children }: { children: React.ReactNode }) {
   const { user, guestId } = useAuth();
+  const { isPro } = usePurchases();
   const [tastings, setTastings] = useState<TastingNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,15 +52,15 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
     loadLocalTastings();
   }, []);
 
-  // 2. Sync with Supabase on user/network change
+  // 2. Sync with Supabase on user/network/Pro change
   useEffect(() => {
-    if (isSupabaseConfigured() && user) {
+    if (isSupabaseConfigured() && user && isPro) {
       syncWithCloud();
     }
-  }, [user]);
+  }, [user, isPro]);
 
   const syncWithCloud = async () => {
-    if (!isSupabaseConfigured() || !user) return;
+    if (!isSupabaseConfigured() || !user || !isPro) return;
 
     try {
       // 1. Fetch remote tastings
@@ -78,30 +80,36 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
           brewery: row.brewery || '',
           vintageOrBatch: row.vintage_or_batch || '',
           photoUrl: row.photo_url || undefined,
+          labelPhotoUrl: row.label_photo_url || undefined,
           scoresheet: {
-            aromaScore: row.aroma_score,
-            aromaNotes: row.aroma_notes || '',
             appearanceScore: row.appearance_score,
             appearanceNotes: row.appearance_notes || '',
+            aromaScore: row.aroma_score,
+            aromaNotes: row.aroma_notes || '',
             flavorScore: row.flavor_score,
             flavorNotes: row.flavor_notes || '',
             mouthfeelScore: row.mouthfeel_score,
             mouthfeelNotes: row.mouthfeel_notes || '',
+            aftertasteNotes: row.aftertaste_notes || '',
             overallScore: row.overall_score,
             overallNotes: row.overall_notes || '',
           },
-          totalScore: row.total_score || calculateTotalScore({
-            aromaScore: row.aroma_score,
-            aromaNotes: '',
-            appearanceScore: row.appearance_score,
-            appearanceNotes: '',
-            flavorScore: row.flavor_score,
-            flavorNotes: '',
-            mouthfeelScore: row.mouthfeel_score,
-            mouthfeelNotes: '',
-            overallScore: row.overall_score,
-            overallNotes: '',
-          }),
+          structuredAttributes: row.structured_attributes || undefined,
+          totalScore:
+            row.total_score ||
+            calculateTotalScore({
+              appearanceScore: row.appearance_score,
+              appearanceNotes: '',
+              aromaScore: row.aroma_score,
+              aromaNotes: '',
+              flavorScore: row.flavor_score,
+              flavorNotes: '',
+              mouthfeelScore: row.mouthfeel_score,
+              mouthfeelNotes: '',
+              aftertasteNotes: '',
+              overallScore: row.overall_score,
+              overallNotes: '',
+            }),
           descriptors: row.descriptors || [],
           feedbackNotes: row.feedback_notes || '',
           createdAt: row.created_at,
@@ -137,12 +145,24 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
     let finalPhotoUrl = tastingInput.photoUrl;
     if (finalPhotoUrl && (finalPhotoUrl.startsWith('file://') || finalPhotoUrl.startsWith('ph://'))) {
       try {
-        const uploadedUrl = await uploadBeerPhoto(finalPhotoUrl, effectiveUserId, id);
+        const uploadedUrl = await uploadBeerPhoto(finalPhotoUrl, effectiveUserId, `${id}-glass`);
         if (uploadedUrl) {
           finalPhotoUrl = uploadedUrl;
         }
       } catch (e) {
-        console.warn('Error uploading photo during save:', e);
+        console.warn('Error uploading glass photo during save:', e);
+      }
+    }
+
+    let finalLabelPhotoUrl = tastingInput.labelPhotoUrl;
+    if (finalLabelPhotoUrl && (finalLabelPhotoUrl.startsWith('file://') || finalLabelPhotoUrl.startsWith('ph://'))) {
+      try {
+        const uploadedLabelUrl = await uploadBeerPhoto(finalLabelPhotoUrl, effectiveUserId, `${id}-label`);
+        if (uploadedLabelUrl) {
+          finalLabelPhotoUrl = uploadedLabelUrl;
+        }
+      } catch (e) {
+        console.warn('Error uploading label photo during save:', e);
       }
     }
 
@@ -151,6 +171,7 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
       id,
       userId: effectiveUserId,
       photoUrl: finalPhotoUrl,
+      labelPhotoUrl: finalLabelPhotoUrl,
       totalScore,
       createdAt: now,
       updatedAt: now,
@@ -162,8 +183,8 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
     setTastings(updatedList);
     await AsyncStorage.setItem(LOCAL_TASTINGS_KEY, JSON.stringify(updatedList));
 
-    // Upload to Supabase if online
-    if (isSupabaseConfigured() && user) {
+    // Upload to Supabase if online and user is PRO
+    if (isSupabaseConfigured() && user && isPro) {
       try {
         await supabase.from('tasting_notes').upsert({
           id,
@@ -174,16 +195,20 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
           brewery: noteToSave.brewery,
           vintage_or_batch: noteToSave.vintageOrBatch,
           photo_url: noteToSave.photoUrl,
-          aroma_score: noteToSave.scoresheet.aromaScore,
-          aroma_notes: noteToSave.scoresheet.aromaNotes,
+          label_photo_url: noteToSave.labelPhotoUrl,
           appearance_score: noteToSave.scoresheet.appearanceScore,
           appearance_notes: noteToSave.scoresheet.appearanceNotes,
+          aroma_score: noteToSave.scoresheet.aromaScore,
+          aroma_notes: noteToSave.scoresheet.aromaNotes,
           flavor_score: noteToSave.scoresheet.flavorScore,
           flavor_notes: noteToSave.scoresheet.flavorNotes,
           mouthfeel_score: noteToSave.scoresheet.mouthfeelScore,
           mouthfeel_notes: noteToSave.scoresheet.mouthfeelNotes,
+          aftertaste_notes: noteToSave.scoresheet.aftertasteNotes,
           overall_score: noteToSave.scoresheet.overallScore,
           overall_notes: noteToSave.scoresheet.overallNotes,
+          structured_attributes: noteToSave.structuredAttributes,
+          total_score: noteToSave.totalScore,
           descriptors: noteToSave.descriptors,
           feedback_notes: noteToSave.feedbackNotes,
           created_at: noteToSave.createdAt,
