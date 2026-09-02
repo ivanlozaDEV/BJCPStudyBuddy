@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, isSupabaseConfigured } from '@/services/supabase';
 
 // ============================================================
 // Types
@@ -53,28 +52,6 @@ export async function recordAnswer(
     };
     history[id] = updatedStats;
     await AsyncStorage.setItem(KEYS[type], JSON.stringify(history));
-
-    // Cloud background sync
-    if (isSupabaseConfigured()) {
-      (async () => {
-        try {
-          const { data } = await supabase.auth.getUser();
-          if (data?.user) {
-            const total = updatedStats.correct + updatedStats.incorrect;
-            const difficulty = total > 0 ? updatedStats.incorrect / total : 0.5;
-            await supabase.from('study_progress').upsert({
-              user_id: data.user.id,
-              item_id: id,
-              item_type: type,
-              times_correct: updatedStats.correct,
-              times_wrong: updatedStats.incorrect,
-              difficulty_score: difficulty,
-              last_reviewed_at: new Date().toISOString(),
-            });
-          }
-        } catch {}
-      })();
-    }
   } catch {
     // Fail silently — learning history is non-critical
   }

@@ -9,6 +9,7 @@ const LOCAL_IS_PRO_KEY = '@bjcp_is_pro_status';
 
 // RevenueCat Entitlement and Product Configuration
 export const ENTITLEMENT_ID = 'brew_study_pro';
+export const PRODUCT_ID_LIFETIME = 'brewstudy_pro_lifetime_999';
 export const PRODUCT_ID_ANNUAL = 'brewstudy_pro_annual_1199';
 
 // RevenueCat Public API Keys
@@ -24,6 +25,7 @@ interface PurchasesContextData {
   isPro: boolean;
   customerInfo: CustomerInfo | null;
   packages: PurchasesPackage[];
+  lifetimePackage: PurchasesPackage | null;
   annualPackage: PurchasesPackage | null;
   storeProduct: PurchasesStoreProduct | null;
   purchasePackage: (pkg?: PurchasesPackage) => Promise<boolean>;
@@ -37,10 +39,11 @@ interface PurchasesContextData {
 const PurchasesContext = createContext<PurchasesContextData | null>(null);
 
 export function PurchasesProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [isPro, setIsPro] = useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [lifetimePackage, setLifetimePackage] = useState<PurchasesPackage | null>(null);
   const [annualPackage, setAnnualPackage] = useState<PurchasesPackage | null>(null);
   const [storeProduct, setStoreProduct] = useState<PurchasesStoreProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +56,8 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     return Boolean(
       info.entitlements.active[ENTITLEMENT_ID] ||
       info.entitlements.active['pro'] ||
-      info.entitlements.active['BrewStudy PRO']
+      info.entitlements.active['BrewStudy PRO'] ||
+      info.entitlements.active['lifetime']
     );
   };
 
@@ -79,12 +83,14 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
               console.warn('RevenueCat: Could not fetch initial customer info', e);
             }
 
-            // Fetch offerings & active packages (Yearly / Annual)
+            // Fetch offerings & active packages (Lifetime / Annual)
             try {
               const offerings = await Purchases.getOfferings();
               if (offerings.current && offerings.current.availablePackages.length > 0) {
                 setPackages(offerings.current.availablePackages);
+                const lifetime = offerings.current.lifetime || offerings.current.availablePackages.find(p => p.identifier.includes('lifetime')) || offerings.current.availablePackages[0] || null;
                 const annual = offerings.current.annual || offerings.current.availablePackages[0] || null;
+                setLifetimePackage(lifetime);
                 setAnnualPackage(annual);
               }
             } catch (e) {
@@ -93,169 +99,126 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
             // Query store product directly (fallback / StoreKit configuration)
             try {
-              const products = await Purchases.getProducts([PRODUCT_ID_ANNUAL]);
+              const products = await Purchases.getProducts([PRODUCT_ID_LIFETIME, PRODUCT_ID_ANNUAL]);
               if (products.length > 0) {
                 setStoreProduct(products[0]);
               }
             } catch (e) {
-              console.warn('RevenueCat: Store product query warning', e);
+              console.warn('RevenueCat: Could not fetch store products', e);
             }
 
-            // Real-time listener for customer info updates (renewals, cancellations, refunds)
-            Purchases.addCustomerInfoUpdateListener((info: CustomerInfo) => {
+            // Listener for customer info changes (renewals, cancellations, cross-device updates)
+            Purchases.addCustomerInfoUpdateListener((info) => {
               setCustomerInfo(info);
-              const isEntitled = checkProEntitlement(info);
-              setIsPro(isEntitled);
+              const hasPro = checkProEntitlement(info);
+              setIsPro(hasPro);
+              AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
             });
           }
         }
-
-        // Local storage status fallback (offline simulation)
-        const localStatus = await AsyncStorage.getItem(LOCAL_IS_PRO_KEY);
-        if (localStatus === 'true') {
-          setIsPro(true);
-        }
-      } catch (e) {
-        console.warn('RevenueCat initialization error:', e);
-        try {
-          const localStatus = await AsyncStorage.getItem(LOCAL_IS_PRO_KEY);
-          if (localStatus === 'true') setIsPro(true);
-        } catch {}
+      } catch (error) {
+        console.error('Error initializing RevenueCat:', error);
       } finally {
+        // Fallback: check local storage if offline or during local development
+        try {
+          const localPro = await AsyncStorage.getItem(LOCAL_IS_PRO_KEY);
+          if (localPro) {
+            setIsPro(JSON.parse(localPro));
+          }
+        } catch {}
         setIsLoading(false);
       }
     }
 
     initPurchases();
-  }, [configured]);
+  }, []);
 
-  // 2. Sync App User ID with Supabase Auth User
-  useEffect(() => {
-    async function syncUserId() {
-      try {
-        if (configured && (Platform.OS === 'ios' || Platform.OS === 'android')) {
-          if (user?.id) {
-            const { customerInfo: updatedInfo } = await Purchases.logIn(user.id);
-            setCustomerInfo(updatedInfo);
-            setIsPro(checkProEntitlement(updatedInfo));
-          }
-        }
-      } catch (e) {
-        console.warn('RevenueCat: Error syncing user ID', e);
-      }
-    }
-    syncUserId();
-  }, [user?.id, configured]);
-
-  // 3. Purchase Package / Product
+  // Purchase Package Handler
   const purchasePackage = async (pkg?: PurchasesPackage): Promise<boolean> => {
     try {
       setIsLoading(true);
+      const targetPackage = pkg || lifetimePackage || annualPackage || (packages.length > 0 ? packages[0] : null);
 
-      if (configured) {
-        // Attempt Purchase via RevenueCat Package
-        const targetPkg = pkg || annualPackage || (packages.length > 0 ? packages[0] : null);
-        if (targetPkg) {
-          const { customerInfo: purchaseInfo } = await Purchases.purchasePackage(targetPkg);
-          setCustomerInfo(purchaseInfo);
-          const hasPro = checkProEntitlement(purchaseInfo);
-          setIsPro(hasPro);
-          if (hasPro) await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, 'true');
-          return hasPro;
+      if (targetPackage) {
+        const { customerInfo } = await Purchases.purchasePackage(targetPackage);
+        const hasPro = checkProEntitlement(customerInfo);
+        setIsPro(hasPro);
+        await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
+        return hasPro;
+      } else if (storeProduct) {
+        const { customerInfo } = await Purchases.purchaseStoreProduct(storeProduct);
+        const hasPro = checkProEntitlement(customerInfo);
+        setIsPro(hasPro);
+        await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
+        return hasPro;
+      } else {
+        // Mock fallback in development
+        if (__DEV__) {
+          setIsPro(true);
+          await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(true));
+          return true;
         }
-
-        // Attempt Purchase via Direct Store Product (StoreKit testing)
-        const targetProduct = storeProduct || (await Purchases.getProducts([PRODUCT_ID_ANNUAL]))[0];
-        if (targetProduct) {
-          const { customerInfo: purchaseInfo } = await Purchases.purchaseStoreProduct(targetProduct);
-          setCustomerInfo(purchaseInfo);
-          const hasPro = checkProEntitlement(purchaseInfo);
-          setIsPro(hasPro);
-          if (hasPro) await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, 'true');
-          return hasPro;
-        }
-      }
-
-      // Offline Developer Simulation Fallback
-      await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, 'true');
-      setIsPro(true);
-      return true;
-    } catch (e: any) {
-      if (e?.userCancelled) {
-        // User dismissed Apple Pay sheet
         return false;
       }
-      console.warn('Purchase error:', e);
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        console.error('RevenueCat: Error purchasing package', error);
+      }
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 4. Restore Previous Purchases
+  // Restore Purchases Handler
   const restorePurchases = async (): Promise<boolean> => {
     try {
       setIsLoading(true);
-      if (configured) {
-        const info = await Purchases.restorePurchases();
-        setCustomerInfo(info);
-        const hasPro = checkProEntitlement(info);
-        setIsPro(hasPro);
-        if (hasPro) {
-          await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, 'true');
-          return true;
-        }
-      }
-
-      const localStatus = await AsyncStorage.getItem(LOCAL_IS_PRO_KEY);
-      if (localStatus === 'true') {
-        setIsPro(true);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      console.warn('Restore purchases error:', e);
+      const restoredInfo = await Purchases.restorePurchases();
+      setCustomerInfo(restoredInfo);
+      const hasPro = checkProEntitlement(restoredInfo);
+      setIsPro(hasPro);
+      await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
+      return hasPro;
+    } catch (error) {
+      console.error('RevenueCat: Error restoring purchases', error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 5. Present RevenueCat Native Paywall (RevenueCatUI)
+  // Present RevenueCat Native Paywall
   const presentPaywall = async (): Promise<boolean> => {
     try {
       const paywallResult = await RevenueCatUI.presentPaywall({
         displayCloseButton: true,
       });
 
-      if (
-        paywallResult === PAYWALL_RESULT.PURCHASED ||
-        paywallResult === PAYWALL_RESULT.RESTORED
-      ) {
-        const info = await Purchases.getCustomerInfo();
-        setCustomerInfo(info);
-        const hasPro = checkProEntitlement(info);
-        setIsPro(hasPro);
-        if (hasPro) await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, 'true');
-        return true;
+      switch (paywallResult) {
+        case PAYWALL_RESULT.PURCHASED:
+        case PAYWALL_RESULT.RESTORED:
+          setIsPro(true);
+          await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(true));
+          return true;
+        case PAYWALL_RESULT.CANCELLED:
+        case PAYWALL_RESULT.NOT_PRESENTED:
+        case PAYWALL_RESULT.ERROR:
+        default:
+          return false;
       }
-      return false;
-    } catch (e) {
-      console.warn('RevenueCatUI presentPaywall error:', e);
+    } catch (error) {
+      console.warn('RevenueCatUI paywall failed to present:', error);
       return false;
     }
   };
 
-  // 6. Present RevenueCat Customer Center (Self-Service Subscription Management)
-  const presentCustomerCenter = async (): Promise<void> => {
+  // Present RevenueCat Customer Center
+  const presentCustomerCenter = async () => {
     try {
       await RevenueCatUI.presentCustomerCenter();
-      // Refresh customer info after customer center dismiss
-      const info = await Purchases.getCustomerInfo();
-      setCustomerInfo(info);
-      setIsPro(checkProEntitlement(info));
-    } catch (e) {
-      console.warn('Customer Center error:', e);
+    } catch (error) {
+      console.warn('RevenueCat Customer Center not available:', error);
     }
   };
 
@@ -265,6 +228,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
         isPro,
         customerInfo,
         packages,
+        lifetimePackage,
         annualPackage,
         storeProduct,
         purchasePackage,

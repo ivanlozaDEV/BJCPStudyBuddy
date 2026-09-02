@@ -49,7 +49,8 @@
           "photosPermission": "Permite a BrewStudy acceder a tus fotos para adjuntar imágenes a tus fichas de cata.",
           "cameraPermission": "Permite a BrewStudy usar la cámara para fotografiar las cervezas que estás evaluando."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,26 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Pressable, View, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing, Fonts } from '@/constants/theme';
+import { MaxContentWidth, Fonts } from '@/constants/theme';
 import { useTranslation } from '@/context/language-context';
 import { usePurchases } from '@/context/purchases-context';
-import { useAuth } from '@/context/auth-context';
 import { BeerBubbles } from '@/components/beer-bubbles';
 import { BeerLogo } from '@/components/beer-logo';
 import { MenuIcon } from '@/components/menu-icons';
 
-type PlanId = 'annual' | 'monthly' | 'lifetime';
-
 export default function PaywallScreen() {
   const { language } = useTranslation();
-  const { purchasePackage, restorePurchases, isLoading, isPro, annualPackage, storeProduct } = usePurchases();
-  const { user } = useAuth();
-  const candidatePrice = storeProduct?.priceString || annualPackage?.product.priceString || '$11.99';
-  const displayPrice = candidatePrice.includes('79.99') ? '$11.99' : candidatePrice;
+  const { purchasePackage, restorePurchases, isLoading, lifetimePackage, storeProduct } = usePurchases();
+  const candidatePrice = storeProduct?.priceString || lifetimePackage?.product.priceString || '$9.99';
+  const displayPrice = candidatePrice.includes('79.99') || candidatePrice.includes('11.99') ? '$9.99' : candidatePrice;
 
   const safeBack = () => {
     if (router.canGoBack()) {
@@ -33,70 +29,32 @@ export default function PaywallScreen() {
   const handlePurchase = async () => {
     const success = await purchasePackage();
     if (success) {
-      if (!user) {
-        Alert.alert(
-          language === 'es' ? '¡Bienvenido a BrewStudy PRO!' : 'Welcome to BrewStudy PRO!',
-          language === 'es'
-            ? '¿Deseas crear tu cuenta ahora para activar el respaldo automático de fotos y catas en la nube?'
-            : 'Would you like to create your account now to activate automatic cloud backup and sync for your photos and tastings?',
-          [
-            {
-              text: language === 'es' ? 'Más Tarde' : 'Later',
-              style: 'cancel',
-              onPress: () => safeBack(),
-            },
-            {
-              text: language === 'es' ? 'Crear Cuenta' : 'Create Account',
-              onPress: () => {
-                router.replace('/auth' as any);
-              },
-            },
-          ]
-        );
-      } else {
-        Alert.alert(
-          language === 'es' ? '¡Felicidades!' : 'Congratulations!',
-          language === 'es' ? 'Has activado BrewStudy PRO con sincronización en la nube.' : 'You have activated BrewStudy PRO with cloud sync.',
-          [{ text: 'OK', onPress: () => safeBack() }]
-        );
-      }
+      Alert.alert(
+        language === 'es' ? '¡Bienvenido a BrewStudy PRO!' : 'Welcome to BrewStudy PRO!',
+        language === 'es'
+          ? 'Has desbloqueado acceso ilimitado de por vida a todas las herramientas de cata y examen.'
+          : 'You have unlocked unlimited lifetime access to all tasting and exam tools.',
+        [{ text: 'OK', onPress: () => safeBack() }]
+      );
     }
   };
 
   const handleRestore = async () => {
     const success = await restorePurchases();
     if (success) {
-      if (!user) {
-        Alert.alert(
-          language === 'es' ? 'Compras Restauradas' : 'Purchases Restored',
-          language === 'es'
-            ? 'Acceso PRO restaurado. ¿Deseas iniciar sesión o crear cuenta para sincronizar con la nube?'
-            : 'PRO access restored. Would you like to sign in or create an account to sync with the cloud?',
-          [
-            {
-              text: language === 'es' ? 'Más Tarde' : 'Later',
-              style: 'cancel',
-              onPress: () => safeBack(),
-            },
-            {
-              text: language === 'es' ? 'Iniciar Sesión / Registro' : 'Sign In / Sign Up',
-              onPress: () => {
-                router.replace('/auth' as any);
-              },
-            },
-          ]
-        );
-      } else {
-        Alert.alert(
-          language === 'es' ? 'Restaurado' : 'Restored',
-          language === 'es' ? 'Tus compras han sido restauradas exitosamente.' : 'Your purchases have been successfully restored.',
-          [{ text: 'OK', onPress: () => safeBack() }]
-        );
-      }
+      Alert.alert(
+        language === 'es' ? 'Acceso PRO Restaurado' : 'PRO Access Restored',
+        language === 'es'
+          ? 'Tu compra de por vida ha sido verificada exitosamente en este dispositivo.'
+          : 'Your lifetime purchase has been successfully verified on this device.',
+        [{ text: 'OK', onPress: () => safeBack() }]
+      );
     } else {
       Alert.alert(
         language === 'es' ? 'Restaurar Compras' : 'Restore Purchases',
-        language === 'es' ? 'No se encontraron compras activas previas vinculadas a tu cuenta.' : 'No previous active purchases found for your account.'
+        language === 'es'
+          ? 'No se encontraron compras activas previas vinculadas a tu cuenta de Apple ID.'
+          : 'No previous active purchases found for your Apple ID account.'
       );
     }
   };
@@ -126,8 +84,8 @@ export default function PaywallScreen() {
             </ThemedText>
             <ThemedText style={styles.subtitle}>
               {language === 'es' 
-                ? 'Conviértete en un Juez Cervecero de Nivel Master' 
-                : 'Become a Master-Level BJCP Beer Judge'}
+                ? 'La herramienta definitiva para jueces y estudiantes BJCP' 
+                : 'The ultimate tool for BJCP judges and beer enthusiasts'}
             </ThemedText>
           </View>
 
@@ -136,103 +94,101 @@ export default function PaywallScreen() {
             <FeatureRow 
               icon="myTastings" 
               title={language === 'es' ? 'Simulador de Juez Oficial (50 Puntos)' : 'Official 50-Point Judge Simulator'} 
-              desc={language === 'es' ? 'Fichas de cata completas, escalas táctiles, fotos duales de vaso y etiqueta, y nube.' : 'Full scoresheets, continuous tactile faders, dual glass/label photos and cloud sync.'}
+              desc={language === 'es' ? 'Fichas de cata completas con fotos duales, descriptores táctiles y cálculo automático.' : 'Full scoresheets with dual photos, tactile continuous sliders, and auto scoring.'}
             />
             <FeatureRow 
               icon="flashcards" 
-              title={language === 'es' ? 'Flashcards & Simulador de Examen' : 'Flashcards & Exam Simulator'} 
-              desc={language === 'es' ? 'Algoritmo de repetición espaciada para estilos, defectos y glosario técnico.' : 'Spaced repetition algorithm for styles, off-flavors, and technical glossary.'}
+              title={language === 'es' ? 'Simulador de Examen & Casos Reales' : 'Exam Simulator & Real Scenarios'} 
+              desc={language === 'es' ? 'Banco maestro de preguntas curadas, memoria anti-repetición y modo puntos débiles.' : 'Curated master question bank, anti-repetition memory, and weak-spots training.'}
             />
             <FeatureRow 
               icon="comparator" 
               title={language === 'es' ? 'Comparador Avanzado de Estilos' : 'Advanced Style Comparator'} 
-              desc={language === 'es' ? 'Compara estadísticas vitales (OG, FG, IBU, SRM, ABV) y aromas cara a cara.' : 'Compare vital statistics (OG, FG, IBU, SRM, ABV) and aroma profiles side-by-side.'}
+              desc={language === 'es' ? 'Compara estadísticas vitales (OG, FG, IBU, SRM, ABV) e ingredientes cara a cara.' : 'Compare vital statistics (OG, FG, IBU, SRM, ABV) and ingredients side-by-side.'}
+            />
+            <FeatureRow 
+              icon="settings" 
+              title={language === 'es' ? '100% Privado & Traslado entre Teléfonos' : '100% Private & Phone-to-Phone Transfer'} 
+              desc={language === 'es' ? 'Tus catas se quedan en tu teléfono. Expórtalas por AirDrop, WhatsApp o Archivos cuando quieras.' : 'Your data stays on your phone. Export via AirDrop, WhatsApp, or Files anytime.'}
             />
           </View>
 
-          {/* Single Simple Annual Subscription Card with 7-Day Free Trial */}
+          {/* Single Lifetime Card ($9.99 Forever) */}
           <View style={styles.plansContainer}>
             <View style={[styles.planCard, styles.planCardSelected]}>
               <View style={styles.planBadge}>
                 <ThemedText style={styles.planBadgeText}>
-                  {language === 'es' ? '🎁 7 DÍAS GRATIS • LUEGO $1.00 / MES' : '🎁 7-DAY FREE TRIAL • THEN $1.00 / MO'}
+                  {language === 'es' ? '✨ PAGO ÚNICO • ACCESO DE POR VIDA' : '✨ ONE-TIME PAYMENT • LIFETIME ACCESS'}
                 </ThemedText>
               </View>
               <View style={styles.planRow}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
                   <ThemedText style={styles.planTitle}>
-                    {language === 'es' ? 'Suscripción Anual PRO' : 'Annual PRO Subscription'}
+                    {language === 'es' ? 'Acceso PRO Ilimitado' : 'Unlimited PRO Access'}
                   </ThemedText>
                   <ThemedText style={styles.planPeriod}>
                     {language === 'es'
-                      ? `7 días gratis, luego ${displayPrice} / año. Acceso completo y nube.`
-                      : `7 days free, then ${displayPrice} / year. Full access & cloud sync.`}
+                      ? 'Pagas una sola vez. Sin suscripciones ni cobros mensuales.'
+                      : 'Pay once forever. No subscriptions or monthly fees.'}
                   </ThemedText>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <ThemedText style={styles.planPrice}>
-                    {displayPrice} <ThemedText style={styles.planPricePeriod}>{language === 'es' ? '/año' : '/yr'}</ThemedText>
+                    {displayPrice}
                   </ThemedText>
                   <ThemedText style={styles.planSubPrice}>
-                    {language === 'es' ? '($1.00 / mes)' : '($1.00 / mo)'}
+                    {language === 'es' ? 'para siempre' : 'forever'}
                   </ThemedText>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Action CTA Button */}
-          <View style={styles.purchaseSection}>
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#F2B824" style={{ marginVertical: 16 }} />
-            ) : (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.purchaseButton,
-                  pressed && { opacity: 0.85 },
-                ]}
-                onPress={handlePurchase}
-              >
-                <ThemedText style={styles.purchaseButtonText}>
-                  {isPro
-                    ? (language === 'es' ? '✓ Suscripción PRO Activa' : '✓ PRO Subscription Active')
-                    : (language === 'es' ? 'Iniciar Prueba Gratis de 7 Días' : 'Start 7-Day Free Trial')} 
+          {/* Main Action Button */}
+          <View style={styles.ctaContainer}>
+            <Pressable
+              style={({ pressed }) => [styles.ctaButton, pressed && { transform: [{ scale: 0.98 }] }]}
+              onPress={handlePurchase}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#0f172a" size="small" />
+              ) : (
+                <ThemedText style={styles.ctaButtonText}>
+                  {language === 'es' 
+                    ? `Desbloquear PRO Para Siempre (${displayPrice})` 
+                    : `Unlock PRO Forever (${displayPrice})`}
                 </ThemedText>
-              </Pressable>
-            )}
-
-            <ThemedText style={styles.cancelAnytimeText}>
-              {language === 'es' ? 'Sin compromiso • Cancela en cualquier momento' : 'No commitment • Cancel anytime'}
-            </ThemedText>
-
-            <Pressable onPress={handleRestore} style={({ pressed }) => [styles.restoreButton, pressed && { opacity: 0.7 }]}>
-              <ThemedText style={styles.restoreText}>
-                {language === 'es' ? 'Restaurar Compras Anteriores' : 'Restore Previous Purchases'}
-              </ThemedText>
+              )}
             </Pressable>
+
+            {/* Guaranteed Lifetime note */}
+            <ThemedText style={styles.guaranteeText}>
+              {language === 'es'
+                ? '🔒 Compra protegida por Apple. Válida para todos tus dispositivos con tu Apple ID.'
+                : '🔒 Protected by Apple. Valid across all your devices with your Apple ID.'}
+            </ThemedText>
           </View>
 
-          {/* Legal Footer */}
-          <View style={styles.legalSection}>
-            <ThemedText style={styles.legalText}>
-              {language === 'es' 
-                ? 'El pago se cargará a tu cuenta de Apple ID / Google Play al confirmar la compra. La suscripción se renueva automáticamente a menos que se cancele al menos 24 horas antes del final del período actual. Las Guías de Estilo BJCP 2021 completas son de libre acceso en la sección de Explorar.' 
-                : 'Payment will be charged to your Apple ID / Google Play account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. The official BJCP 2021 guidelines remain free to explore.'}
-            </ThemedText>
-
-            <View style={styles.legalLinksRow}>
-              <Pressable onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
-                <ThemedText style={styles.legalLink}>
-                  {language === 'es' ? 'Términos de Uso (EULA)' : 'Terms of Service (EULA)'}
-                </ThemedText>
-              </Pressable>
-              <ThemedText style={styles.legalDivider}>•</ThemedText>
-              <Pressable onPress={() => Linking.openURL('https://www.banana-computer.com/brew-study/privacy-policy')}>
-                <ThemedText style={styles.legalLink}>
-                  {language === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
-                </ThemedText>
-              </Pressable>
-            </View>
+          {/* Legal / Restore Links */}
+          <View style={styles.footerLinks}>
+            <Pressable onPress={handleRestore}>
+              <ThemedText style={styles.linkText}>
+                {language === 'es' ? 'Restaurar Compras' : 'Restore Purchases'}
+              </ThemedText>
+            </Pressable>
+            <ThemedText style={styles.linkDivider}>•</ThemedText>
+            <Pressable onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+              <ThemedText style={styles.linkText}>
+                {language === 'es' ? 'Términos de Uso' : 'Terms of Use'}
+              </ThemedText>
+            </Pressable>
+            <ThemedText style={styles.linkDivider}>•</ThemedText>
+            <Pressable onPress={() => Linking.openURL('https://bjcp.org')}>
+              <ThemedText style={styles.linkText}>
+                {language === 'es' ? 'Privacidad' : 'Privacy'}
+              </ThemedText>
+            </Pressable>
           </View>
 
         </ScrollView>
@@ -244,10 +200,10 @@ export default function PaywallScreen() {
 function FeatureRow({ icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
     <View style={styles.featureRow}>
-      <View style={styles.featureIconContainer}>
-        <MenuIcon name={icon} />
+      <View style={styles.featureIconBox}>
+        <MenuIcon name={icon} width={24} height={24} />
       </View>
-      <View style={styles.featureTextContainer}>
+      <View style={styles.featureContent}>
         <ThemedText style={styles.featureTitle}>{title}</ThemedText>
         <ThemedText style={styles.featureDesc}>{desc}</ThemedText>
       </View>
@@ -258,228 +214,208 @@ function FeatureRow({ icon, title, desc }: { icon: any; title: string; desc: str
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2F5D73',
+    backgroundColor: '#0a0f1d',
   },
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
-    alignSelf: 'center',
     width: '100%',
+    alignSelf: 'center',
   },
   header: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    zIndex: 10,
   },
   closeButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   closeText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#94a3b8',
+    fontFamily: Fonts.spaceGroteskBold,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.six,
+    paddingHorizontal: 20,
+    paddingBottom: 64,
+    alignItems: 'center',
   },
   heroSection: {
     alignItems: 'center',
-    paddingTop: Spacing.two,
-    marginBottom: Spacing.four,
+    marginVertical: 16,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 36,
-    paddingTop: 6,
-    paddingBottom: 2,
+    fontSize: 32,
     fontFamily: Fonts.spaceGroteskBold,
-    color: '#FFF',
-    marginTop: Spacing.one,
+    color: '#f8fafc',
+    marginTop: 8,
     textAlign: 'center',
   },
   proBadge: {
-    color: '#F2B824', // Gold
+    color: '#f59e0b',
+    fontFamily: Fonts.spaceGroteskBold,
   },
   subtitle: {
     fontSize: 14,
-    lineHeight: 20,
-    fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#94a3b8',
     textAlign: 'center',
-    marginTop: Spacing.one,
+    marginTop: 4,
+    maxWidth: 290,
+    fontFamily: Fonts.inter,
   },
   featuresList: {
-    gap: Spacing.two,
-    marginBottom: Spacing.four,
+    width: '100%',
+    marginVertical: 16,
+    gap: 12,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.22)',
-    padding: Spacing.three,
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
   },
-  featureIconContainer: {
-    marginRight: Spacing.three,
-    width: 38,
-    height: 38,
-    justifyContent: 'center',
+  featureIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  featureTextContainer: {
+  featureContent: {
     flex: 1,
   },
   featureTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: Fonts.spaceGroteskBold,
-    color: '#FFF',
-    marginBottom: 2,
+    color: '#f8fafc',
   },
   featureDesc: {
     fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+    lineHeight: 16,
     fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.7)',
-    lineHeight: 17,
   },
   plansContainer: {
-    gap: Spacing.two,
-    marginBottom: Spacing.four,
+    width: '100%',
+    marginVertical: 16,
   },
   planCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    borderRadius: 16,
-    padding: Spacing.four,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     position: 'relative',
   },
   planCardSelected: {
-    borderColor: '#F2B824',
-    backgroundColor: 'rgba(242, 184, 36, 0.12)',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: '#f59e0b',
   },
   planBadge: {
     position: 'absolute',
-    top: -10,
-    right: 16,
-    backgroundColor: '#F2B824',
-    paddingHorizontal: 8,
+    top: -12,
+    alignSelf: 'center',
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 12,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 10,
   },
   planBadgeText: {
-    color: '#161B22',
     fontSize: 10,
     fontFamily: Fonts.spaceGroteskBold,
-    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: 0.5,
   },
   planRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 4,
   },
   planTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: Fonts.spaceGroteskBold,
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: '#f8fafc',
   },
   planPeriod: {
     fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 3,
     fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.65)',
-    marginTop: 2,
   },
   planPrice: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: Fonts.spaceGroteskBold,
-    color: '#F2B824',
-    fontWeight: '800',
-  },
-  planPricePeriod: {
-    fontSize: 12,
-    fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#f59e0b',
   },
   planSubPrice: {
     fontSize: 11,
-    fontFamily: Fonts.inter,
-    color: '#52B788',
-    fontWeight: '700',
+    color: '#94a3b8',
     marginTop: 2,
+    fontFamily: Fonts.spaceGroteskBold,
   },
-  purchaseSection: {
-    alignItems: 'center',
-    marginBottom: Spacing.four,
-  },
-  purchaseButton: {
+  ctaContainer: {
     width: '100%',
-    paddingVertical: 14,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  ctaButton: {
+    width: '100%',
+    backgroundColor: '#f59e0b',
+    paddingVertical: 16,
     borderRadius: 16,
-    backgroundColor: '#F2B824',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.two,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  purchaseButtonText: {
+  ctaButtonText: {
     fontSize: 16,
     fontFamily: Fonts.spaceGroteskBold,
-    color: '#161B22',
-    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: 0.2,
   },
-  cancelAnytimeText: {
-    fontSize: 12,
-    fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: Spacing.two,
-    textAlign: 'center',
-  },
-  restoreButton: {
-    padding: Spacing.two,
-  },
-  restoreText: {
-    fontSize: 13,
-    fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.75)',
-    textDecorationLine: 'underline',
-  },
-  legalSection: {
-    paddingHorizontal: Spacing.two,
-    gap: 8,
-  },
-  legalText: {
-    fontSize: 10.5,
-    fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.5)',
-    textAlign: 'center',
-    lineHeight: 15,
-  },
-  legalLinksRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  legalLink: {
+  guaranteeText: {
     fontSize: 11,
+    color: '#64748b',
+    marginTop: 10,
+    textAlign: 'center',
+    paddingHorizontal: 16,
     fontFamily: Fonts.inter,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textDecorationLine: 'underline',
   },
-  legalDivider: {
-    color: 'rgba(255, 255, 255, 0.4)',
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  linkText: {
+    fontSize: 11,
+    color: '#64748b',
+    textDecorationLine: 'underline',
+    fontFamily: Fonts.inter,
+  },
+  linkDivider: {
+    color: '#334155',
     fontSize: 11,
   },
 });
