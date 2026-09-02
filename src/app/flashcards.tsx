@@ -34,6 +34,11 @@ function QuizIcon({ name, color = '#FFF', size = 20 }: { name: string, color?: s
     case 'check': return <Svg {...props}><Polyline points="20 6 9 17 4 12" /></Svg>;
     case 'arrow': return <Svg {...props}><Line x1="5" y1="12" x2="19" y2="12" /><Polyline points="12 5 19 12 12 19" /></Svg>;
     case 'award': return <Svg {...props}><Circle cx="12" cy="8" r="7" /><Polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" /></Svg>;
+    case 'timer': return <Svg {...props}><Circle cx="12" cy="12" r="10" /><Polyline points="12 6 12 12 16 14" /></Svg>;
+    case 'exam': return <Svg {...props}><Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><Polyline points="14 2 14 8 20 8" /><Line x1="16" y1="13" x2="8" y2="13" /><Line x1="16" y1="17" x2="8" y2="17" /></Svg>;
+    case 'weakspots': return <Svg {...props}><Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><Line x1="12" y1="9" x2="12" y2="13" /><Line x1="12" y1="17" x2="12.01" y2="17" /></Svg>;
+    case 'bulb': return <Svg {...props}><Path d="M9 18h6M10 22h4M15 8a5 5 0 0 0-6 0c0 2 1 3 1 4h4c0-1 1-2 1-4z" /></Svg>;
+    case 'refresh': return <Svg {...props}><Path d="M23 4v6h-6M1 20v-6h6" /><Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></Svg>;
     default: return null;
   }
 }
@@ -53,6 +58,15 @@ function getSRMColor(srm: number): string {
 type StudyMode = 'flashcards' | 'quiz';
 type QuizState = 'lobby' | 'playing' | 'results';
 type FcState = 'lobby' | 'playing';
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default function FlashcardsScreen() {
   const theme = useTheme();
@@ -121,6 +135,47 @@ export default function FlashcardsScreen() {
   const [streak, setStreak] = usePersistentState<number>('@bjcp_quiz_streak', 0);
   const [maxStreak, setMaxStreak] = usePersistentState<number>('@bjcp_quiz_max_streak', 0);
   const [selectedOption, setSelectedOption] = usePersistentState<string | null>('@bjcp_quiz_selected', null);
+
+  // Extended Quiz 2.0 State
+  const [quizTab, setQuizTab] = useState<'practice' | 'exam' | 'weakspots'>('practice');
+  const [examSecondsLeft, setExamSecondsLeft] = useState<number>(1800);
+  const [sessionMistakes, setSessionMistakes] = useState<QuizQuestion[]>([]);
+  const [weakSpotsPool, setWeakSpotsPool] = useState<QuizQuestion[]>([]);
+  const [seenQuestionIds, setSeenQuestionIds] = usePersistentState<string[]>('@bjcp_quiz_seen_ids', []);
+
+  // Load weakspots bank on mount
+  useEffect(() => {
+    async function loadWeakSpots() {
+      try {
+        const raw = await AsyncStorage.getItem('@bjcp_failed_questions_pool');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setWeakSpotsPool(parsed);
+        }
+      } catch (e) {}
+    }
+    loadWeakSpots();
+  }, [quizState]);
+
+  // Exam Simulator Countdown Timer Effect
+  useEffect(() => {
+    let timer: any = null;
+    if (quizState === 'playing' && quizMode === 'exam_simulator') {
+      timer = setInterval(() => {
+        setExamSecondsLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setQuizState('results');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [quizState, quizMode]);
 
   const startNewFlashcardSession = async (category = 'all') => {
     let stylesList = getBJCPStyles(language);
@@ -540,14 +595,50 @@ export default function FlashcardsScreen() {
     }
   };
 
-  const startQuiz = () => {
-    const q = generateQuiz(quizMode, language, quizCount);
+  const startQuiz = (modeOverride?: QuizMode, countOverride?: number) => {
+    const mode = modeOverride || quizMode;
+    const count = countOverride || (mode === 'exam_simulator' ? 40 : quizCount);
+    const q = generateQuiz(mode, language, count, seenQuestionIds);
+    setQuizMode(mode);
     setQuestions(q);
     setCurrentQuestionIndex(0);
     setQuizScore(0);
     setStreak(0);
     setMaxStreak(0);
     setSelectedOption(null);
+    setSessionMistakes([]);
+    if (mode === 'exam_simulator') {
+      setExamSecondsLeft(1800); // 30 minutes
+    }
+    setQuizState('playing');
+  };
+
+  const startExamSimulator = () => {
+    startQuiz('exam_simulator', 40);
+  };
+
+  const startWeakSpotsDrill = () => {
+    if (weakSpotsPool.length === 0) return;
+    setQuizMode('mixed');
+    setQuestions(shuffle(weakSpotsPool));
+    setCurrentQuestionIndex(0);
+    setQuizScore(0);
+    setStreak(0);
+    setMaxStreak(0);
+    setSelectedOption(null);
+    setSessionMistakes([]);
+    setQuizState('playing');
+  };
+
+  const startMistakeReview = () => {
+    if (sessionMistakes.length === 0) return;
+    setQuestions(shuffle(sessionMistakes));
+    setCurrentQuestionIndex(0);
+    setQuizScore(0);
+    setStreak(0);
+    setMaxStreak(0);
+    setSelectedOption(null);
+    setSessionMistakes([]);
     setQuizState('playing');
   };
 
@@ -557,6 +648,12 @@ export default function FlashcardsScreen() {
     
     const currentQ = questions[currentQuestionIndex];
     const isCorrect = option === currentQ.options[currentQ.correctIndex];
+
+    // Record question in persistent seen history (FIFO queue of max 500)
+    if (currentQ?.id && !seenQuestionIds.includes(currentQ.id)) {
+      const updatedSeen = [...seenQuestionIds, currentQ.id].slice(-500);
+      setSeenQuestionIds(updatedSeen);
+    }
     
     if (isCorrect) {
       setQuizScore(prev => prev + 1);
@@ -565,8 +662,23 @@ export default function FlashcardsScreen() {
         if (newStreak > maxStreak) setMaxStreak(newStreak);
         return newStreak;
       });
+
+      // If user mastered a question from the weakspots bank, remove it
+      if (weakSpotsPool.some(w => w.id === currentQ.id)) {
+        const updated = weakSpotsPool.filter(w => w.id !== currentQ.id);
+        setWeakSpotsPool(updated);
+        AsyncStorage.setItem('@bjcp_failed_questions_pool', JSON.stringify(updated)).catch(() => {});
+      }
     } else {
       setStreak(0);
+      setSessionMistakes(prev => [...prev, currentQ]);
+
+      // Add to persistent weak spots bank
+      if (!weakSpotsPool.some(w => w.id === currentQ.id)) {
+        const updated = [currentQ, ...weakSpotsPool].slice(0, 50);
+        setWeakSpotsPool(updated);
+        AsyncStorage.setItem('@bjcp_failed_questions_pool', JSON.stringify(updated)).catch(() => {});
+      }
     }
   };
 
@@ -1469,59 +1581,215 @@ export default function FlashcardsScreen() {
     );
   };
 
-  const renderQuizLobby = () => (
-    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <Text style={{ textAlign: 'center', marginBottom: Spacing.four, fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>BJCP Quiz</Text>
-        
-        <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Modo de Estudio:' : 'Study Mode:'}</Text>
-        <View style={styles.modesContainer}>
-          {[
-            { id: 'mixed', label: language === 'es' ? 'Mixto (Todos)' : 'Mixed (All)', desc: language === 'es' ? 'Examen simulado integral' : 'Comprehensive mock exam', icon: 'mixed' },
-            { id: 'styles', label: language === 'es' ? 'Estilos' : 'Styles', desc: language === 'es' ? 'Adivina estilos, IBU, ABV' : 'Guess styles, IBU, ABV', icon: 'styles' },
-            { id: 'glossary', label: language === 'es' ? 'Glosario' : 'Glossary', desc: language === 'es' ? 'Términos técnicos' : 'Technical terms', icon: 'glossary' },
-            { id: 'offflavors', label: language === 'es' ? 'Off-Flavors' : 'Off-Flavors', desc: language === 'es' ? 'Defectos y causas' : 'Defects and causes', icon: 'offflavors' },
-          ].map(m => (
-            <Pressable 
-              key={m.id}
-              onPress={() => setQuizMode(m.id as QuizMode)}
-              style={[styles.modeBtn, { borderColor: theme.border }, quizMode === m.id && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }]}
-            >
-              <View style={styles.modeBtnHeader}>
-                <QuizIcon name={m.icon} color={quizMode === m.id ? theme.gold : theme.textSecondary} size={18} />
-                <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 14 }}>{m.label}</Text>
-              </View>
-              <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.textSecondary, marginLeft: 26 }}>{m.desc}</Text>
-            </Pressable>
-          ))}
-        </View>
+  const renderQuizLobby = () => {
+    return (
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <Text style={{ textAlign: 'center', marginBottom: Spacing.two, fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
+            BJCP Quiz 2.0
+          </Text>
+          <Text style={{ textAlign: 'center', marginBottom: Spacing.two, fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, lineHeight: 18 }}>
+            {language === 'es'
+              ? 'Entrena con preguntas de nivel oficial, distractores inteligentes y explicaciones con tips de juez.'
+              : 'Train with official-level questions, smart distractors, and judge tips.'}
+          </Text>
 
-        <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>{language === 'es' ? 'Cantidad de Preguntas:' : 'Number of Questions:'}</Text>
-        <View style={styles.countContainer}>
-          {[5, 10, 20, 50].map(c => (
-            <Pressable
-              key={c}
-              onPress={() => setQuizCount(c)}
-              style={[styles.countBtn, { borderColor: theme.border }, quizCount === c && { backgroundColor: theme.gold, borderColor: theme.gold }]}
-            >
-              <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 14 }}>{c}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Pressable onPress={startQuiz} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
-          <View style={styles.btnContentRow}>
-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Comenzar Quiz' : 'Start Quiz'}</Text>
-            <QuizIcon name="arrow" color="#FFF" size={18} />
+          {/* Anti-Repetition Explored Badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: Spacing.four, backgroundColor: 'rgba(255,255,255,0.05)', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, alignSelf: 'center' }}>
+            <QuizIcon name="bulb" color={theme.gold} size={13} />
+            <Text style={{ fontSize: 11, fontFamily: Fonts.spaceGroteskBold, color: theme.gold, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {language === 'es'
+                ? `Banco inteligente: ${seenQuestionIds.length} preguntas exploradas`
+                : `Smart Bank: ${seenQuestionIds.length} questions explored`}
+            </Text>
           </View>
-        </Pressable>
-      </ThemedView>
-    </ScrollView>
-  );
+
+          {/* Tab Selector: Practice vs Exam vs Weakspots */}
+          <View style={{ flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.four }}>
+            <Pressable
+              onPress={() => setQuizTab('practice')}
+              style={[
+                styles.countBtn,
+                { flex: 1, borderColor: theme.border },
+                quizTab === 'practice' && { backgroundColor: theme.gold, borderColor: theme.gold }
+              ]}
+            >
+              <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 12 }}>
+                {language === 'es' ? 'Práctica' : 'Practice'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setQuizTab('exam')}
+              style={[
+                styles.countBtn,
+                { flex: 1, borderColor: theme.border },
+                quizTab === 'exam' && { backgroundColor: theme.gold, borderColor: theme.gold }
+              ]}
+            >
+              <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 12 }}>
+                {language === 'es' ? '⏱️ Simulacro' : '⏱️ Mock Exam'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setQuizTab('weakspots')}
+              style={[
+                styles.countBtn,
+                { flex: 1, borderColor: theme.border },
+                quizTab === 'weakspots' && { backgroundColor: theme.gold, borderColor: theme.gold }
+              ]}
+            >
+              <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 12 }}>
+                {language === 'es' ? `Fallos (${weakSpotsPool.length})` : `Mistakes (${weakSpotsPool.length})`}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* TAB 1: PRACTICE BY CATEGORY */}
+          {quizTab === 'practice' && (
+            <>
+              <Text style={{ fontWeight: '700', marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>
+                {language === 'es' ? 'Tema a Practicar:' : 'Subject to Practice:'}
+              </Text>
+              <View style={styles.modesContainer}>
+                {[
+                  { id: 'mixed', label: language === 'es' ? 'Simulación Mixta' : 'Mixed Simulation', desc: language === 'es' ? 'Estilos, defectos, procesos y ética BJCP' : 'Styles, faults, processes & BJCP ethics', icon: 'mixed' },
+                  { id: 'styles', label: language === 'es' ? 'Estilos & Comparador' : 'Styles & Comparisons', desc: language === 'es' ? 'Discriminación, ABV, IBU e ingredientes' : 'Discrimination, ABV, IBU & ingredients', icon: 'styles' },
+                  { id: 'offflavors', label: language === 'es' ? 'Defectos (Off-Flavors)' : 'Off-Flavors & Faults', desc: language === 'es' ? 'Sensaciones, causas químicas y prevención' : 'Sensations, chemical causes & prevention', icon: 'offflavors' },
+                  { id: 'procedures', label: language === 'es' ? 'Procedimientos & Ética BJCP' : 'BJCP Procedures & Ethics', desc: language === 'es' ? 'Reglas de cata, hojas de 50 pts y rangos' : 'Judging rules, 50-pt scoresheets & ranks', icon: 'exam' },
+                  { id: 'processes', label: language === 'es' ? 'Procesos & Química Cervecera' : 'Brewing Science & Processes', desc: language === 'es' ? 'Agua, decocción, maceración y levaduras' : 'Water chemistry, mashing & yeast science', icon: 'bulb' },
+                  { id: 'glossary', label: language === 'es' ? 'Glosario Técnico' : 'Technical Glossary', desc: language === 'es' ? 'Términos oficiales y definiciones' : 'Official terms & definitions', icon: 'glossary' },
+                ].map(m => (
+                  <Pressable 
+                    key={m.id}
+                    onPress={() => setQuizMode(m.id as QuizMode)}
+                    style={[styles.modeBtn, { borderColor: theme.border }, quizMode === m.id && { borderColor: theme.gold, backgroundColor: theme.backgroundSelected }]}
+                  >
+                    <View style={styles.modeBtnHeader}>
+                      <QuizIcon name={m.icon} color={quizMode === m.id ? theme.gold : theme.textSecondary} size={18} />
+                      <Text style={{ fontWeight: '700', fontFamily: Fonts.manropeBold, color: theme.text, fontSize: 14 }}>{m.label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.textSecondary, marginLeft: 26 }}>{m.desc}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={{ fontWeight: '700', marginTop: Spacing.four, marginBottom: Spacing.two, fontSize: 14, fontFamily: Fonts.manropeBold, color: theme.text }}>
+                {language === 'es' ? 'Cantidad de Preguntas:' : 'Number of Questions:'}
+              </Text>
+              <View style={styles.countContainer}>
+                {[5, 10, 20, 40].map(c => (
+                  <Pressable
+                    key={c}
+                    onPress={() => setQuizCount(c)}
+                    style={[styles.countBtn, { borderColor: theme.border }, quizCount === c && { backgroundColor: theme.gold, borderColor: theme.gold }]}
+                  >
+                    <Text style={{ color: theme.text, fontWeight: '700', fontFamily: Fonts.manropeBold, fontSize: 14 }}>{c}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable onPress={() => startQuiz()} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
+                <View style={styles.btnContentRow}>
+                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
+                    {language === 'es' ? 'Iniciar Práctica' : 'Start Practice'}
+                  </Text>
+                  <QuizIcon name="arrow" color="#FFF" size={18} />
+                </View>
+              </Pressable>
+            </>
+          )}
+
+          {/* TAB 2: EXAM SIMULATOR */}
+          {quizTab === 'exam' && (
+            <View style={{ gap: Spacing.three, paddingVertical: Spacing.two }}>
+              <View style={{ backgroundColor: theme.backgroundSelected, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two }}>
+                  <QuizIcon name="exam" color={theme.gold} size={22} />
+                  <Text style={{ fontSize: 16, fontWeight: '800', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
+                    {language === 'es' ? 'Simulacro Oficial BJCP' : 'Official BJCP Mock Exam'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 19 }}>
+                  {language === 'es'
+                    ? '• 40 Preguntas balanceadas (50% Estilos, 25% Off-Flavors, 15% Procesos, 10% Tags).\n• 30 Minutos con temporizador real.\n• Calificación oficial BJCP (Aprobado >= 70%, Reconocido >= 80%, Certificado >= 85%, Nacional/Master >= 90%).'
+                    : '• 40 Balanced questions (50% Styles, 25% Faults, 15% Processes, 10% Tags).\n• 30 Minutes countdown timer.\n• Official BJCP grading scale (Pass >= 70%, Recognized >= 80%, Certified >= 85%, National/Master >= 90%).'}
+                </Text>
+              </View>
+
+              <Pressable onPress={startExamSimulator} style={[styles.startQuizBtn, { backgroundColor: theme.gold, marginTop: Spacing.two }]}>
+                <View style={styles.btnContentRow}>
+                  <QuizIcon name="timer" color={theme.text} size={18} />
+                  <Text style={{ color: theme.text, fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
+                    {language === 'es' ? 'Comenzar Examen (30 min)' : 'Start Exam (30 min)'}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          )}
+
+          {/* TAB 3: WEAK SPOTS DRILL */}
+          {quizTab === 'weakspots' && (
+            <View style={{ gap: Spacing.three, paddingVertical: Spacing.two }}>
+              <View style={{ backgroundColor: theme.backgroundSelected, padding: Spacing.three, borderRadius: Spacing.two, borderWidth: 1, borderColor: theme.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two }}>
+                  <QuizIcon name="weakspots" color={theme.gold} size={22} />
+                  <Text style={{ fontSize: 16, fontWeight: '800', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
+                    {language === 'es' ? 'Banco de Puntos Débiles' : 'Weak Spots Mistake Bank'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 19 }}>
+                  {weakSpotsPool.length > 0
+                    ? (language === 'es'
+                        ? `Tienes ${weakSpotsPool.length} preguntas en tu banco de errores. Cada vez que aciertes una pregunta aquí, se eliminará de la lista hasta que domines el 100%.`
+                        : `You have ${weakSpotsPool.length} questions in your mistake bank. Answering them correctly removes them from the list until you achieve 100% mastery.`)
+                    : (language === 'es'
+                        ? '¡Tu banco de errores está vacío! No tienes preguntas falladas pendientes. ¡Gran trabajo!'
+                        : 'Your mistake bank is empty! You have no pending failed questions. Great job!')}
+                </Text>
+              </View>
+
+              {weakSpotsPool.length > 0 && (
+                <Pressable onPress={startWeakSpotsDrill} style={[styles.startQuizBtn, { backgroundColor: theme.tint, marginTop: Spacing.two }]}>
+                  <View style={styles.btnContentRow}>
+                    <QuizIcon name="refresh" color="#FFF" size={18} />
+                    <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
+                      {language === 'es' ? `Entrenar Errores (${weakSpotsPool.length})` : `Train Mistakes (${weakSpotsPool.length})`}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+        </ThemedView>
+      </ScrollView>
+    );
+  };
 
   const renderQuizPlaying = () => {
     const q = questions[currentQuestionIndex];
+    if (!q) return null;
     const hasAnswered = selectedOption !== null;
+
+    const formatTimer = (seconds: number) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const getDifficultyColor = (diff?: string) => {
+      if (diff === 'hard') return '#E63946';
+      if (diff === 'medium') return theme.gold;
+      return theme.success;
+    };
+
+    const getDifficultyLabel = (diff?: string) => {
+      if (diff === 'hard') return language === 'es' ? 'Avanzado' : 'Hard';
+      if (diff === 'medium') return language === 'es' ? 'Medio' : 'Medium';
+      return language === 'es' ? 'Fácil' : 'Easy';
+    };
 
     return (
       <>
@@ -1547,11 +1815,27 @@ export default function FlashcardsScreen() {
             >
               <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' }}>←</Text>
             </Pressable>
-            <Text style={styles.title}>{language === 'es' ? 'Quiz' : 'Quiz'}</Text>
+            <Text style={styles.title}>
+              {quizMode === 'exam_simulator' ? (language === 'es' ? 'Examen BJCP' : 'BJCP Exam') : 'Quiz'}
+            </Text>
           </View>
-          <View style={styles.streakBadge}>
-            <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
-            <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>{language === 'es' ? 'Racha:' : 'Streak:'} {streak}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two }}>
+            {quizMode === 'exam_simulator' ? (
+              <View style={[styles.streakBadge, { backgroundColor: examSecondsLeft < 300 ? '#E63946' : 'rgba(0,0,0,0.3)' }]}>
+                <QuizIcon name="timer" color="#FFF" size={14} />
+                <Text style={{ fontWeight: '800', color: '#FFF', fontSize: 13, fontFamily: Fonts.spaceGroteskBold }}>
+                  {formatTimer(examSecondsLeft)}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.streakBadge}>
+                <QuizIcon name="fire" color={streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)'} size={16} />
+                <Text style={{ fontWeight: '700', color: streak > 0 ? theme.gold : 'rgba(255, 255, 255, 0.8)', fontSize: 13, fontFamily: Fonts.manropeBold }}>
+                  {language === 'es' ? 'Racha:' : 'Streak:'} {streak}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -1559,6 +1843,9 @@ export default function FlashcardsScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
               {language === 'es' ? 'Pregunta' : 'Question'} {currentQuestionIndex + 1} / {questions.length}
+            </Text>
+            <Text style={{ fontWeight: '700', color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, fontFamily: Fonts.manropeBold }}>
+              {quizScore} {language === 'es' ? 'Aciertos' : 'Correct'}
             </Text>
           </View>
           <View style={[styles.progressBarTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
@@ -1574,13 +1861,32 @@ export default function FlashcardsScreen() {
           const subInfo = parts.slice(1).join('\n\n');
           return (
             <ThemedView style={[styles.quizQuestionCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-              <View style={styles.quizCategoryHeader}>
-                <QuizIcon name={q.category} color={theme.gold} size={16} />
-                <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
-                  {q.category === 'mixed' ? (language === 'es' ? 'General' : 'General') : (q.category === 'styles' ? (language === 'es' ? 'Estilos' : 'Styles') : q.category === 'glossary' ? (language === 'es' ? 'Glosario' : 'Glossary') : q.category === 'offflavors' ? (language === 'es' ? 'Off-Flavors' : 'Off-Flavors') : q.category)}
-                </Text>
+              <View style={[styles.quizCategoryHeader, { justifyContent: 'space-between', width: '100%' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.one }}>
+                  <QuizIcon name={q.category} color={theme.gold} size={15} />
+                  <Text style={{ color: theme.gold, textTransform: 'uppercase', fontFamily: Fonts.spaceGroteskBold, fontSize: 11, letterSpacing: 1 }}>
+                    {q.category === 'mixed'
+                      ? (language === 'es' ? 'General' : 'General')
+                      : q.category === 'styles'
+                        ? (language === 'es' ? 'Estilos' : 'Styles')
+                        : q.category === 'procedures'
+                          ? (language === 'es' ? 'Ética & Procedimientos' : 'BJCP Procedures')
+                          : q.category === 'processes'
+                            ? (language === 'es' ? 'Procesos Cerveceros' : 'Brewing Science')
+                            : q.category === 'glossary'
+                              ? (language === 'es' ? 'Glosario' : 'Glossary')
+                              : q.category === 'offflavors'
+                                ? (language === 'es' ? 'Off-Flavors' : 'Off-Flavors')
+                                : q.category}
+                  </Text>
+                </View>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 10, fontFamily: Fonts.spaceGroteskBold, color: getDifficultyColor(q.difficulty), textTransform: 'uppercase' }}>
+                    {getDifficultyLabel(q.difficulty)}
+                  </Text>
+                </View>
               </View>
-              <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.tint }}>
+              <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', fontFamily: Fonts.spaceGroteskBold, color: theme.tint, marginTop: Spacing.one }}>
                 {mainQuestion}
               </Text>
               {subInfo ? (
@@ -1610,12 +1916,11 @@ export default function FlashcardsScreen() {
                 textColor = '#FFF';
                 iconName = 'check';
               } else if (isSelected && !isCorrectOption) {
-                bgColor = theme.gold; // Brand Gold for incorrect selection
+                bgColor = theme.gold;
                 borderColor = theme.gold;
                 textColor = theme.text;
                 iconName = 'cross';
               } else {
-                // Keep option card but dim it
                 bgColor = theme.backgroundElement;
                 borderColor = theme.border;
                 textColor = theme.textSecondary;
@@ -1677,14 +1982,40 @@ export default function FlashcardsScreen() {
         </View>
 
         {hasAnswered && (
-          <View style={[styles.explanationContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>{q.explanation}</Text>
-            <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.gold }]}>
+          <View style={[styles.explanationContainer, { backgroundColor: theme.backgroundElement, borderColor: theme.border, borderWidth: 1, borderRadius: Spacing.two, padding: Spacing.three, gap: Spacing.two }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <QuizIcon name={selectedOption === q.options[q.correctIndex] ? 'check' : 'cross'} color={selectedOption === q.options[q.correctIndex] ? theme.success : theme.gold} size={16} />
+              <Text style={{ fontSize: 13, fontWeight: '800', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
+                {selectedOption === q.options[q.correctIndex]
+                  ? (language === 'es' ? '¡Respuesta Correcta!' : 'Correct Answer!')
+                  : (language === 'es' ? 'Explicación Pedagógica:' : 'Explanation:')}
+              </Text>
+            </View>
+            
+            <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 20 }}>
+              {q.explanation}
+            </Text>
+
+            {q.judgeTip && (
+              <View style={{ backgroundColor: theme.backgroundSelected, padding: Spacing.two, borderRadius: Spacing.one, borderLeftWidth: 3, borderLeftColor: theme.gold, marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <QuizIcon name="bulb" color={theme.gold} size={14} />
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.spaceGroteskBold, color: theme.gold, textTransform: 'uppercase' }}>
+                    {language === 'es' ? 'Tip de Examen BJCP' : 'BJCP Exam Tip'}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.textSecondary, lineHeight: 18 }}>
+                  {q.judgeTip}
+                </Text>
+              </View>
+            )}
+
+            <Pressable onPress={nextQuizQuestion} style={[styles.nextQuizBtn, { backgroundColor: theme.gold, marginTop: Spacing.two }]}>
               <View style={styles.btnContentRow}>
                 <Text style={{ color: theme.text, fontWeight: '700', fontSize: 14, fontFamily: Fonts.manropeBold }}>
                   {currentQuestionIndex + 1 === questions.length 
                     ? (language === 'es' ? 'Ver Resultados' : 'View Results') 
-                    : (language === 'es' ? 'Siguiente' : 'Next')}
+                    : (language === 'es' ? 'Siguiente Pregunta' : 'Next Question')}
                 </Text>
                 <QuizIcon name={currentQuestionIndex + 1 === questions.length ? 'award' : 'arrow'} color={theme.text} size={16} />
               </View>
@@ -1698,35 +2029,65 @@ export default function FlashcardsScreen() {
 
   const renderQuizResults = () => {
     const percentage = Math.round((quizScore / questions.length) * 100);
+
+    const getBjcpRankTier = (pct: number) => {
+      if (pct >= 90) return { title: language === 'es' ? '🏆 Juez Nacional / Master' : '🏆 National / Master Judge', color: '#F2B824', sub: language === 'es' ? 'Rendimiento Sobresaliente (Puntaje Oficial >= 90%)' : 'Outstanding Performance (Official Score >= 90%)' };
+      if (pct >= 85) return { title: language === 'es' ? '🥇 Juez Certificado (Certified)' : '🥇 Certified Judge', color: '#52B788', sub: language === 'es' ? 'Rango Muy Alto (Puntaje Oficial >= 85%)' : 'Very High Tier (Official Score >= 85%)' };
+      if (pct >= 80) return { title: language === 'es' ? '🥈 Juez Reconocido (Recognized)' : '🥈 Recognized Judge', color: '#4EA8DE', sub: language === 'es' ? 'Rango Sólido (Puntaje Oficial >= 80%)' : 'Solid Tier (Official Score >= 80%)' };
+      if (pct >= 70) return { title: language === 'es' ? '🥉 Aprobado (Passing Grade)' : '🥉 Passing Grade', color: '#A0C4FF', sub: language === 'es' ? 'Umbral de Aprobación Mínimo (>= 70%)' : 'Minimum Passing Threshold (>= 70%)' };
+      return { title: language === 'es' ? '📚 Juez Aprendiz en Formación' : '📚 Apprentice Judge in Training', color: theme.textSecondary, sub: language === 'es' ? 'Sigue practicando para alcanzar el 70% oficial' : 'Keep practicing to reach the 70% passing grade' };
+    };
+
+    const rankTier = getBjcpRankTier(percentage);
+
     return (
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border, alignItems: 'center', paddingVertical: Spacing.six }]}>
-          <QuizIcon name="award" color={percentage >= 80 ? theme.success : theme.tint} size={64} />
+        <ThemedView style={[styles.lobbyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border, alignItems: 'center', paddingVertical: Spacing.five }]}>
+          <QuizIcon name="award" color={rankTier.color} size={64} />
           
-          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginVertical: Spacing.four }}>{language === 'es' ? 'Resultados Finales' : 'Final Results'}</Text>
+          <Text style={{ fontSize: 24, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: theme.text, marginTop: Spacing.three }}>
+            {language === 'es' ? 'Resultados del Quiz' : 'Quiz Results'}
+          </Text>
           
-          <Text style={{ fontSize: 48, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: percentage >= 80 ? theme.success : theme.tint, marginVertical: Spacing.two }}>
+          <Text style={{ fontSize: 52, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: rankTier.color, marginVertical: Spacing.one }}>
             {percentage}%
           </Text>
           
-          <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.textSecondary, marginBottom: Spacing.four }}>
+          <Text style={{ fontSize: 15, fontFamily: Fonts.inter, color: theme.textSecondary, marginBottom: Spacing.three }}>
             {language === 'es' 
               ? `${quizScore} de ${questions.length} respuestas correctas` 
               : `${quizScore} of ${questions.length} correct answers`}
           </Text>
-          
-          <View style={[styles.finalStreakBadge, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }]}>
-            <QuizIcon name="fire" color={theme.gold} size={24} />
-            <Text style={{ fontWeight: '700', fontSize: 16, color: theme.text, fontFamily: Fonts.manropeBold }}>
-              {language === 'es' ? 'Racha Máxima:' : 'Max Streak:'} {maxStreak}
+
+          {/* BJCP Official Rank Tier Badge */}
+          <View style={{ backgroundColor: theme.backgroundSelected, padding: Spacing.three, borderRadius: Spacing.two, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: theme.border, marginBottom: Spacing.three }}>
+            <Text style={{ fontSize: 16, fontWeight: '900', fontFamily: Fonts.spaceGroteskBold, color: rankTier.color, textAlign: 'center' }}>
+              {rankTier.title}
+            </Text>
+            <Text style={{ fontSize: 12, fontFamily: Fonts.inter, color: theme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+              {rankTier.sub}
             </Text>
           </View>
 
-          <Pressable onPress={() => setQuizState('lobby')} style={[styles.startQuizBtn, { backgroundColor: theme.tint, width: '100%', marginTop: Spacing.five }]}>
-            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16, fontFamily: Fonts.manropeBold }}>
-              {language === 'es' ? 'Volver al Menú' : 'Back to Menu'}
-            </Text>
-          </Pressable>
+          {/* Action Buttons: Mistake Review vs New Quiz */}
+          <View style={{ width: '100%', gap: Spacing.two, marginTop: Spacing.two }}>
+            {sessionMistakes.length > 0 && (
+              <Pressable onPress={startMistakeReview} style={[styles.startQuizBtn, { backgroundColor: theme.gold }]}>
+                <View style={styles.btnContentRow}>
+                  <QuizIcon name="refresh" color={theme.text} size={18} />
+                  <Text style={{ color: theme.text, fontWeight: '800', fontSize: 15, fontFamily: Fonts.manropeBold }}>
+                    {language === 'es' ? `Repasar Errores de Esta Sesión (${sessionMistakes.length})` : `Review Mistakes (${sessionMistakes.length})`}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+
+            <Pressable onPress={() => setQuizState('lobby')} style={[styles.startQuizBtn, { backgroundColor: theme.tint }]}>
+              <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 15, fontFamily: Fonts.manropeBold }}>
+                {language === 'es' ? 'Volver al Menú de Quizzes' : 'Back to Quiz Menu'}
+              </Text>
+            </Pressable>
+          </View>
         </ThemedView>
       </ScrollView>
     );
