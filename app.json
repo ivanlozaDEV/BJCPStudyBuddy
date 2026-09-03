@@ -2,7 +2,7 @@
   "expo": {
     "name": "BrewStudy",
     "slug": "bjcp-study-buddy",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -15,7 +15,7 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.ivanloza.bjcpstudybuddy",
-      "buildNumber": "5"
+      "buildNumber": "6"
     },
     "android": {
       "adaptiveIcon": {
