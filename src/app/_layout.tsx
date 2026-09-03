@@ -17,10 +17,33 @@ import { TastingsProvider } from '@/context/tastings-context';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLastRoute } from '@/hooks/use-last-route';
+import { useIncomingFileHandler } from '@/hooks/use-incoming-file-handler';
 
-export default function TabLayout() {
+function AppContent() {
+  // Maneja la restauración de la última pantalla
+  useLastRoute();
+  // Maneja la apertura automática de fichas .bjcptasting y .brewstudy desde WhatsApp o Archivos
+  useIncomingFileHandler();
+
+  return (
+    <ThemeProvider value={DefaultTheme}>
+      <StatusBar style="dark" />
+      <AnimatedSplashOverlay />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+        }}
+      />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   const colorScheme = useColorScheme();
-  
+
   const [loaded, error] = useFonts({
     SpaceGrotesk_400Regular,
     SpaceGrotesk_700Bold,
@@ -36,9 +59,6 @@ export default function TabLayout() {
     IBMPlexSans_600SemiBold,
   });
 
-  // Handle automatic route restoration
-  useLastRoute();
-
   if (!loaded && !error) {
     return null;
   }
@@ -49,16 +69,7 @@ export default function TabLayout() {
         <AuthProvider>
           <PurchasesProvider>
             <TastingsProvider>
-              <ThemeProvider value={DefaultTheme}>
-                <StatusBar style="dark" />
-                <AnimatedSplashOverlay />
-                <Stack screenOptions={{ 
-                  headerShown: false, 
-                  animation: 'slide_from_right',
-                  gestureEnabled: true,
-                  fullScreenGestureEnabled: true 
-                }} />
-              </ThemeProvider>
+              <AppContent />
             </TastingsProvider>
           </PurchasesProvider>
         </AuthProvider>

@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
+import { Share, Platform, Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface BrewStudyBackupPayload {
   version: number;
@@ -12,6 +11,8 @@ export interface BrewStudyBackupPayload {
     fullName: string;
     bjcpRank: string;
     bjcpId?: string;
+    avatarUrl?: string;
+    avatarBase64?: string;
   };
   quizSeenIds: string[];
   failedQuestionsPool: any[];
@@ -32,16 +33,51 @@ export interface BrewStudyBackupPayload {
 const BACKUP_VERSION = 2; // Version 2 supports full embedded photo encoding and comprehensive study memory
 
 /**
+ * Lazy loaders para módulos nativos opcionales que evitan que la app se caiga si no se ha recompilado el binario
+ */
+function getDocumentPickerModule(): any {
+  try {
+    const isRegistered =
+      Boolean((global as any)?.expo?.modules?.ExpoDocumentPicker) ||
+      Boolean((global as any)?.ExpoModules?.ExpoDocumentPicker);
+
+    if (!isRegistered) {
+      return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('expo-document-picker');
+  } catch {
+    return null;
+  }
+}
+
+function getSharingModule(): any {
+  try {
+    const isRegistered =
+      Boolean((global as any)?.expo?.modules?.ExpoSharing) ||
+      Boolean((global as any)?.ExpoModules?.ExpoSharing);
+
+    if (!isRegistered) {
+      return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('expo-sharing');
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convierte una URI de archivo local a Base64 de forma segura
  */
 async function fileUriToBase64(uri?: string): Promise<string | undefined> {
   if (!uri || !uri.startsWith('file://')) return undefined;
   try {
-    const info = await (FileSystem as any).getInfoAsync(uri);
+    const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) return undefined;
 
-    const base64 = await (FileSystem as any).readAsStringAsync(uri, {
-      encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType?.Base64 || 'base64',
     });
     return base64;
   } catch (e) {
@@ -55,19 +91,19 @@ async function fileUriToBase64(uri?: string): Promise<string | undefined> {
  */
 async function base64ToLocalFile(base64Data: string, fileName: string): Promise<string | undefined> {
   try {
-    const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+    const docDir = FileSystem.documentDirectory || FileSystem.cacheDirectory || '';
     const photosDir = `${docDir}tasting_photos/`;
 
-    const dirInfo = await (FileSystem as any).getInfoAsync(photosDir);
+    const dirInfo = await FileSystem.getInfoAsync(photosDir);
     if (!dirInfo.exists) {
-      await (FileSystem as any).makeDirectoryAsync(photosDir, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
     }
 
     const targetUri = `${photosDir}${fileName}`;
     const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
 
-    await (FileSystem as any).writeAsStringAsync(targetUri, cleanBase64, {
-      encoding: (FileSystem as any).EncodingType?.Base64 || 'base64',
+    await FileSystem.writeAsStringAsync(targetUri, cleanBase64, {
+      encoding: FileSystem.EncodingType?.Base64 || 'base64',
     });
 
     return targetUri;
@@ -139,14 +175,23 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
     })
   );
 
+  let enrichedProfile = profileRaw
+    ? JSON.parse(profileRaw)
+    : { fullName: 'Juez en Formación', bjcpRank: 'Apprentice' };
+
+  if (enrichedProfile?.avatarUrl) {
+    const avatarB64 = await fileUriToBase64(enrichedProfile.avatarUrl);
+    if (avatarB64) {
+      enrichedProfile.avatarBase64 = avatarB64;
+    }
+  }
+
   return {
     version: BACKUP_VERSION,
     appName: 'BrewStudy',
     exportedAt: new Date().toISOString(),
     tastings: enrichedTastings,
-    profile: profileRaw
-      ? JSON.parse(profileRaw)
-      : { fullName: 'Juez en Formación', bjcpRank: 'Apprentice' },
+    profile: enrichedProfile,
     quizSeenIds: quizSeenRaw ? JSON.parse(quizSeenRaw) : [],
     failedQuestionsPool: failedQuestionsRaw ? JSON.parse(failedQuestionsRaw) : [],
     fcProgress: fcProgressRaw ? JSON.parse(fcProgressRaw) : [],
@@ -169,31 +214,42 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
  */
 export async function exportBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ success: boolean; message?: string }> {
   try {
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (!isAvailable) {
-      return {
-        success: false,
-        message: lang === 'es' ? 'La función de compartir no está disponible en este dispositivo.' : 'Sharing is not available on this device.',
-      };
-    }
-
     const payload = await generateBackupPayload();
     const jsonString = JSON.stringify(payload, null, 2);
 
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const fileName = `BrewStudy_Backup_${dateStr}.brewstudy`;
-    const tempDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
+    const tempDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
     const fileUri = `${tempDir}${fileName}`;
 
-    await (FileSystem as any).writeAsStringAsync(fileUri, jsonString, {
-      encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
+    await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+      encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
     });
 
-    await Sharing.shareAsync(fileUri, {
-      mimeType: 'application/json',
-      dialogTitle: lang === 'es' ? 'Exportar Respaldo de BrewStudy (con Fotos)' : 'Export BrewStudy Backup (with Photos)',
-      UTI: 'public.json',
+    // 1. Intentar expo-sharing si está disponible
+    const Sharing = getSharingModule();
+    if (Sharing && typeof Sharing.shareAsync === 'function') {
+      try {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/json',
+            dialogTitle: lang === 'es' ? 'Exportar Respaldo de BrewStudy' : 'Export BrewStudy Backup',
+            UTI: 'public.json',
+          });
+          return { success: true };
+        }
+      } catch (sharingError) {
+        console.warn('Sharing error, falling back to React Native Share:', sharingError);
+      }
+    }
+
+    // 2. Fallback con Share nativo de React Native (100% compatible sin dependencias)
+    await Share.share({
+      title: lang === 'es' ? 'Respaldo BrewStudy' : 'BrewStudy Backup',
+      url: fileUri,
+      message: Platform.OS === 'android' ? jsonString : undefined,
     });
 
     return { success: true };
@@ -212,6 +268,16 @@ export async function exportBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
  */
 export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ success: boolean; count?: number; message?: string }> {
   try {
+    const DocumentPicker = getDocumentPickerModule();
+    if (!DocumentPicker || typeof DocumentPicker.getDocumentAsync !== 'function') {
+      return {
+        success: false,
+        message: lang === 'es'
+          ? 'Para usar el selector de archivos nativo, por favor recompila la app en Xcode (`npx expo run:ios`).'
+          : 'To use native document picker, please rebuild the app in Xcode (`npx expo run:ios`).',
+      };
+    }
+
     const result = await DocumentPicker.getDocumentAsync({
       type: ['application/json', 'application/octet-stream', '*/*'],
       copyToCacheDirectory: true,
@@ -222,8 +288,8 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
     }
 
     const asset = result.assets[0];
-    const fileContent = await (FileSystem as any).readAsStringAsync(asset.uri, {
-      encoding: (FileSystem as any).EncodingType?.UTF8 || 'utf8',
+    const fileContent = await FileSystem.readAsStringAsync(asset.uri, {
+      encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
     });
 
     const parsed: BrewStudyBackupPayload = JSON.parse(fileContent);
@@ -270,7 +336,15 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
     ];
 
     if (parsed.profile) {
-      storageOperations.push(['@bjcp_user_profile', JSON.stringify(parsed.profile)]);
+      const prof = { ...parsed.profile };
+      if ((prof as any).avatarBase64) {
+        const newAvatarUri = await base64ToLocalFile((prof as any).avatarBase64, 'judge_avatar.jpg');
+        if (newAvatarUri) {
+          prof.avatarUrl = newAvatarUri;
+        }
+        delete (prof as any).avatarBase64;
+      }
+      storageOperations.push(['@bjcp_user_profile', JSON.stringify(prof)]);
     }
     if (parsed.quizSeenIds) {
       storageOperations.push(['@bjcp_quiz_seen_ids', JSON.stringify(parsed.quizSeenIds)]);

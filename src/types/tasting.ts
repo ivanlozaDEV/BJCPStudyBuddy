@@ -64,6 +64,10 @@ export interface TastingNote {
   totalScore: number;       // Sum of all 5 sections (0 - 50)
   descriptors: string[];    // Flaws / Off-flavors checked
   feedbackNotes?: string;   // Suggestions for the brewer
+  judgeName?: string;       // Evaluator judge name
+  judgeRank?: string;       // Evaluator judge rank
+  judgeId?: string;         // Evaluator judge BJCP ID
+  judgeAvatarUrl?: string;  // Evaluator judge avatar photo
   createdAt: string;
   updatedAt: string;
   synced?: boolean;

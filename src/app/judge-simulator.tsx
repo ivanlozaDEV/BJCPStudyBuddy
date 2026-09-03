@@ -20,10 +20,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTranslation } from '@/context/language-context';
+import { useAuth } from '@/context/auth-context';
 import { usePurchases } from '@/context/purchases-context';
 import { useTastings } from '@/context/tastings-context';
 import { getBJCPStyles, BeerStyle } from '@/data/bjcp2021';
 import { fuzzyMatch } from '@/utils/fuzzy';
+import { shareTastingFile, shareTastingText } from '@/services/tasting-share-service';
 import {
   TastingScoresheet,
   StructuredAttributes,
@@ -101,6 +103,7 @@ function LabelIconSvg({ size = 16 }: { size?: number }) {
 
 export default function JudgeSimulatorScreen() {
   const { t, language } = useTranslation();
+  const { profile } = useAuth();
   const { isPro } = usePurchases();
   const { saveTasting, getTastingById } = useTastings();
   const params = useLocalSearchParams<{ styleId?: string; editId?: string }>();
@@ -166,6 +169,23 @@ export default function JudgeSimulatorScreen() {
     if (params.editId) {
       const existing = getTastingById(params.editId);
       if (existing) {
+        const isExternal =
+          existing.judgeName &&
+          existing.judgeName !== profile?.fullName &&
+          existing.judgeName !== 'Juez en Formación' &&
+          existing.judgeName !== 'Judge in Training';
+
+        if (isExternal) {
+          Alert.alert(
+            language === 'es' ? 'Ficha de Solo Lectura' : 'Read-Only Scoresheet',
+            language === 'es'
+              ? `Esta ficha de cata fue firmada por ${existing.judgeName} y no puede ser modificada.`
+              : `This scoresheet was signed by ${existing.judgeName} and cannot be modified.`,
+            [{ text: 'OK', onPress: () => router.replace('/tastings' as any) }]
+          );
+          return;
+        }
+
         setBeerName(existing.beerName);
         setBrewery(existing.brewery);
         setVintageOrBatch(existing.vintageOrBatch || '');
@@ -207,9 +227,8 @@ export default function JudgeSimulatorScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        allowsEditing: false,
+        quality: 0.85,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
@@ -243,9 +262,8 @@ export default function JudgeSimulatorScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+        allowsEditing: false,
+        quality: 0.85,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
@@ -399,20 +417,16 @@ export default function JudgeSimulatorScreen() {
         structuredAttributes,
         descriptors: [],
         feedbackNotes: '',
+        judgeName: profile?.fullName,
+        judgeRank: profile?.bjcpRank,
+        judgeId: profile?.bjcpId,
+        judgeAvatarUrl: profile?.avatarUrl,
       });
 
-      Alert.alert(
-        t('tastingSaved'),
-        `${saved.beerName} (${saved.totalScore}/50 - ${language === 'es' ? quality.label_es : quality.label_en})`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/tastings' as any);
-            },
-          },
-        ]
-      );
+      router.replace({
+        pathname: '/tasting-detail' as any,
+        params: { id: saved.id, justSaved: 'true' },
+      });
     } catch {
       Alert.alert(
         language === 'es' ? 'Error' : 'Error',
@@ -1309,7 +1323,9 @@ const styles = StyleSheet.create({
   },
   photoFrameDouble: {
     width: '100%',
-    height: 100,
+    aspectRatio: 3 / 4,
+    minHeight: 125,
+    maxHeight: 155,
     borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
@@ -1321,6 +1337,7 @@ const styles = StyleSheet.create({
   photoImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   photoPlaceholder: {
     alignItems: 'center',

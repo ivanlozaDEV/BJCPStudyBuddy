@@ -1590,8 +1590,8 @@ export default function FlashcardsScreen() {
           </Text>
           <Text style={{ textAlign: 'center', marginBottom: Spacing.two, fontSize: 13, fontFamily: Fonts.inter, color: theme.textSecondary, lineHeight: 18 }}>
             {language === 'es'
-              ? 'Entrena con preguntas de nivel oficial, distractores inteligentes y explicaciones con tips de juez.'
-              : 'Train with official-level questions, smart distractors, and judge tips.'}
+              ? 'Entrena con preguntas de nivel de examen, distractores inteligentes y explicaciones con tips de juez.'
+              : 'Train with exam-level questions, smart distractors, and judge tips.'}
           </Text>
 
           {/* Anti-Repetition Explored Badge */}
@@ -1659,7 +1659,7 @@ export default function FlashcardsScreen() {
                   { id: 'offflavors', label: language === 'es' ? 'Defectos (Off-Flavors)' : 'Off-Flavors & Faults', desc: language === 'es' ? 'Sensaciones, causas químicas y prevención' : 'Sensations, chemical causes & prevention', icon: 'offflavors' },
                   { id: 'procedures', label: language === 'es' ? 'Procedimientos & Ética BJCP' : 'BJCP Procedures & Ethics', desc: language === 'es' ? 'Reglas de cata, hojas de 50 pts y rangos' : 'Judging rules, 50-pt scoresheets & ranks', icon: 'exam' },
                   { id: 'processes', label: language === 'es' ? 'Procesos & Química Cervecera' : 'Brewing Science & Processes', desc: language === 'es' ? 'Agua, decocción, maceración y levaduras' : 'Water chemistry, mashing & yeast science', icon: 'bulb' },
-                  { id: 'glossary', label: language === 'es' ? 'Glosario Técnico' : 'Technical Glossary', desc: language === 'es' ? 'Términos oficiales y definiciones' : 'Official terms & definitions', icon: 'glossary' },
+                  { id: 'glossary', label: language === 'es' ? 'Glosario Técnico' : 'Technical Glossary', desc: language === 'es' ? 'Términos técnicos y definiciones' : 'Technical terms & definitions', icon: 'glossary' },
                 ].map(m => (
                   <Pressable 
                     key={m.id}
@@ -1708,13 +1708,13 @@ export default function FlashcardsScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two }}>
                   <QuizIcon name="exam" color={theme.gold} size={22} />
                   <Text style={{ fontSize: 16, fontWeight: '800', fontFamily: Fonts.spaceGroteskBold, color: theme.text }}>
-                    {language === 'es' ? 'Simulacro Oficial BJCP' : 'Official BJCP Mock Exam'}
+                    {language === 'es' ? 'Simulacro de Examen BJCP' : 'BJCP Mock Exam'}
                   </Text>
                 </View>
                 <Text style={{ fontSize: 13, fontFamily: Fonts.inter, color: theme.text, lineHeight: 19 }}>
                   {language === 'es'
-                    ? '• 40 Preguntas balanceadas (50% Estilos, 25% Off-Flavors, 15% Procesos, 10% Tags).\n• 30 Minutos con temporizador real.\n• Calificación oficial BJCP (Aprobado >= 70%, Reconocido >= 80%, Certificado >= 85%, Nacional/Master >= 90%).'
-                    : '• 40 Balanced questions (50% Styles, 25% Faults, 15% Processes, 10% Tags).\n• 30 Minutes countdown timer.\n• Official BJCP grading scale (Pass >= 70%, Recognized >= 80%, Certified >= 85%, National/Master >= 90%).'}
+                    ? '• 40 Preguntas balanceadas (50% Estilos, 25% Off-Flavors, 15% Procesos, 10% Tags).\n• 30 Minutos con temporizador real.\n• Escala de calificación BJCP (Aprobado >= 70%, Reconocido >= 80%, Certificado >= 85%, Nacional/Master >= 90%).'
+                    : '• 40 Balanced questions (50% Styles, 25% Faults, 15% Processes, 10% Tags).\n• 30 Minutes countdown timer.\n• BJCP grading scale (Pass >= 70%, Recognized >= 80%, Certified >= 85%, National/Master >= 90%).'}
                 </Text>
               </View>
 
@@ -2031,11 +2031,11 @@ export default function FlashcardsScreen() {
     const percentage = Math.round((quizScore / questions.length) * 100);
 
     const getBjcpRankTier = (pct: number) => {
-      if (pct >= 90) return { title: language === 'es' ? '🏆 Juez Nacional / Master' : '🏆 National / Master Judge', color: '#F2B824', sub: language === 'es' ? 'Rendimiento Sobresaliente (Puntaje Oficial >= 90%)' : 'Outstanding Performance (Official Score >= 90%)' };
-      if (pct >= 85) return { title: language === 'es' ? '🥇 Juez Certificado (Certified)' : '🥇 Certified Judge', color: '#52B788', sub: language === 'es' ? 'Rango Muy Alto (Puntaje Oficial >= 85%)' : 'Very High Tier (Official Score >= 85%)' };
-      if (pct >= 80) return { title: language === 'es' ? '🥈 Juez Reconocido (Recognized)' : '🥈 Recognized Judge', color: '#4EA8DE', sub: language === 'es' ? 'Rango Sólido (Puntaje Oficial >= 80%)' : 'Solid Tier (Official Score >= 80%)' };
+      if (pct >= 90) return { title: language === 'es' ? '🏆 Juez Nacional / Master' : '🏆 National / Master Judge', color: '#F2B824', sub: language === 'es' ? 'Rendimiento Sobresaliente (Puntaje >= 90%)' : 'Outstanding Performance (Score >= 90%)' };
+      if (pct >= 85) return { title: language === 'es' ? '🥇 Juez Certificado (Certified)' : '🥇 Certified Judge', color: '#52B788', sub: language === 'es' ? 'Rango Muy Alto (Puntaje >= 85%)' : 'Very High Tier (Score >= 85%)' };
+      if (pct >= 80) return { title: language === 'es' ? '🥈 Juez Reconocido (Recognized)' : '🥈 Recognized Judge', color: '#4EA8DE', sub: language === 'es' ? 'Rango Sólido (Puntaje >= 80%)' : 'Solid Tier (Score >= 80%)' };
       if (pct >= 70) return { title: language === 'es' ? '🥉 Aprobado (Passing Grade)' : '🥉 Passing Grade', color: '#A0C4FF', sub: language === 'es' ? 'Umbral de Aprobación Mínimo (>= 70%)' : 'Minimum Passing Threshold (>= 70%)' };
-      return { title: language === 'es' ? '📚 Juez Aprendiz en Formación' : '📚 Apprentice Judge in Training', color: theme.textSecondary, sub: language === 'es' ? 'Sigue practicando para alcanzar el 70% oficial' : 'Keep practicing to reach the 70% passing grade' };
+      return { title: language === 'es' ? '📚 Juez Aprendiz en Formación' : '📚 Apprentice Judge in Training', color: theme.textSecondary, sub: language === 'es' ? 'Sigue practicando para alcanzar el 70% de aprobación' : 'Keep practicing to reach the 70% passing grade' };
     };
 
     const rankTier = getBjcpRankTier(percentage);

@@ -110,14 +110,14 @@ const BJCP_PROCEDURES_DATA: QuestionTemplate[] = [
   {
     type: 'bjcp_scoring',
     difficulty: 'easy',
-    q_es: 'En la hoja oficial de cata BJCP (Scoresheet de 50 puntos), ¿cuántos puntos máximos se asignan a la sección de SABOR (Flavor)?',
-    q_en: 'On the official 50-point BJCP Beer Scoresheet, how many maximum points are allocated to the FLAVOR section?',
+    q_es: 'En la hoja de cata BJCP (Scoresheet de 50 puntos), ¿cuántos puntos máximos se asignan a la sección de SABOR (Flavor)?',
+    q_en: 'On the 50-point BJCP Beer Scoresheet, how many maximum points are allocated to the FLAVOR section?',
     correct_es: '20 puntos',
     correct_en: '20 points',
     distractors_es: ['12 puntos', '10 puntos', '15 puntos'],
     distractors_en: ['12 points', '10 points', '15 points'],
-    exp_es: 'El desglose oficial de la hoja BJCP es: Aroma (12), Aspecto (3), Sabor (20), Sensación en Boca (5) e Impresión General (10) = Total 50 pts.',
-    exp_en: 'The official BJCP scoresheet breakdown is: Aroma (12), Appearance (3), Flavor (20), Mouthfeel (5), and Overall Impression (10) = Total 50 pts.',
+    exp_es: 'El desglose de la hoja BJCP es: Aroma (12), Aspecto (3), Sabor (20), Sensación en Boca (5) e Impresión General (10) = Total 50 pts.',
+    exp_en: 'The BJCP scoresheet breakdown is: Aroma (12), Appearance (3), Flavor (20), Mouthfeel (5), and Overall Impression (10) = Total 50 pts.',
     tip_es: 'Tip de Examen BJCP: El Sabor (20 pts) es la sección más determinante de la hoja, seguido del Aroma (12 pts).',
     tip_en: 'BJCP Exam Tip: Flavor (20 pts) is the most heavily weighted section, followed by Aroma (12 pts).'
   },
@@ -152,8 +152,8 @@ const BJCP_PROCEDURES_DATA: QuestionTemplate[] = [
   {
     type: 'bjcp_scoring',
     difficulty: 'medium',
-    q_es: 'Según la escala oficial BJCP, ¿qué rango de puntaje define a una cerveza "Muy Buena" (Very Good)?',
-    q_en: 'According to the official BJCP scale, what score range defines a "Very Good" beer?',
+    q_es: 'Según la escala de cata BJCP, ¿qué rango de puntaje define a una cerveza "Muy Buena" (Very Good)?',
+    q_en: 'According to the BJCP score scale, what score range defines a "Very Good" beer?',
     correct_es: '30 a 37 puntos',
     correct_en: '30 to 37 points',
     distractors_es: ['21 a 29 puntos', '38 a 44 puntos', '14 a 20 puntos'],
@@ -245,12 +245,12 @@ const BJCP_PROCEDURES_DATA: QuestionTemplate[] = [
     distractors_es: [
       'Menos de 60% en el examen online y 1 punto de experiencia de juzgamiento',
       'Mínimo 80% en el examen de cata y 10 puntos de experiencia de competencia',
-      'Mínimo 90% en ambos exámenes oficiales y 40 puntos de experiencia total'
+      'Mínimo 90% en ambos exámenes BJCP y 40 puntos de experiencia total'
     ],
     distractors_en: [
       'Under 60% on the online entrance exam and 1 judging experience point',
       'At least 80% on the tasting exam and 10 competition experience points',
-      'At least 90% on both official exams and 40 total experience points'
+      'At least 90% on both BJCP exams and 40 total experience points'
     ],
     exp_es: 'Aprendiz: pasa el online. Reconocido: 70-79% + 5 pts. Certificado: >=80% + 10 pts. Nacional: >=80% (ambos) + 20 pts. Master: >=90% (ambos) + 40 pts.',
     exp_en: 'Apprentice: passes online. Recognized: 70-79% + 5 pts. Certified: >=80% + 10 pts. National: >=80% + 20 pts. Master: >=90% + 40 pts.',
@@ -475,8 +475,8 @@ function generateStyleQuestions(lang: 'es' | 'en', count: number): QuizQuestion[
         difficulty: 'medium',
         relatedStyleId: style.id,
         question: isSpanish
-          ? `¿Cuál estilo BJCP corresponde a esta descripción sensorial oficial?\n\n"${style.overallImpression.slice(0, 230)}..."`
-          : `Which official BJCP style matches this sensory description?\n\n"${style.overallImpression.slice(0, 230)}..."`,
+          ? `¿Cuál estilo BJCP corresponde a esta descripción sensorial?\n\n"${style.overallImpression.slice(0, 230)}..."`
+          : `Which BJCP style matches this sensory description?\n\n"${style.overallImpression.slice(0, 230)}..."`,
         options,
         correctIndex,
         explanation: isSpanish
@@ -536,8 +536,8 @@ function generateStyleQuestions(lang: 'es' | 'en', count: number): QuizQuestion[
         options,
         correctIndex,
         explanation: isSpanish
-          ? `Aroma oficial de ${style.id} ${style.name}: ${style.aroma.slice(0, 160)}...`
-          : `Official aroma for ${style.id} ${style.name}: ${style.aroma.slice(0, 160)}...`,
+          ? `Aroma de ${style.id} ${style.name}: ${style.aroma.slice(0, 160)}...`
+          : `Aroma for ${style.id} ${style.name}: ${style.aroma.slice(0, 160)}...`,
         judgeTip: isSpanish
           ? `Tip de Examen BJCP: En la hoja de cata, evalúa malta, lúpulo, ésteres de fermentación y otros aromas característicos por separado.`
           : `BJCP Exam Tip: On the scoresheet, evaluate malt, hops, fermentation esters, and other distinct aromas separately.`,
@@ -616,8 +616,8 @@ function generateStyleQuestions(lang: 'es' | 'en', count: number): QuizQuestion[
           difficulty: 'medium',
           relatedStyleId: style.id,
           question: isSpanish
-            ? `¿Cuál es el rango oficial de ABV (alcohol por volumen) para el estilo ${style.id} ${style.name}?`
-            : `What is the official ABV (alcohol by volume) range for style ${style.id} ${style.name}?`,
+            ? `¿Cuál es el rango de ABV (alcohol por volumen) para el estilo ${style.id} ${style.name}?`
+            : `What is the ABV (alcohol by volume) range for style ${style.id} ${style.name}?`,
           options,
           correctIndex,
           explanation: isSpanish
@@ -640,8 +640,8 @@ function generateStyleQuestions(lang: 'es' | 'en', count: number): QuizQuestion[
           difficulty: 'medium',
           relatedStyleId: style.id,
           question: isSpanish
-            ? `¿Cuál es el rango oficial de amargor (IBU) para el estilo ${style.id} ${style.name}?`
-            : `What is the official bitterness (IBU) range for style ${style.id} ${style.name}?`,
+            ? `¿Cuál es el rango de amargor (IBU) para el estilo ${style.id} ${style.name}?`
+            : `What is the bitterness (IBU) range for style ${style.id} ${style.name}?`,
           options,
           correctIndex,
           explanation: isSpanish
@@ -663,8 +663,8 @@ function generateStyleQuestions(lang: 'es' | 'en', count: number): QuizQuestion[
           difficulty: 'medium',
           relatedStyleId: style.id,
           question: isSpanish
-            ? `¿Cuál es el rango oficial de color (SRM) para el estilo ${style.id} ${style.name}?`
-            : `What is the official color (SRM) range for style ${style.id} ${style.name}?`,
+            ? `¿Cuál es el rango de color (SRM) para el estilo ${style.id} ${style.name}?`
+            : `What is the color (SRM) range for style ${style.id} ${style.name}?`,
           options,
           correctIndex,
           explanation: isSpanish

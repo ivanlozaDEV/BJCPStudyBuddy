@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { TastingNote, calculateTotalScore } from '@/types/tasting';
 import { useAuth } from './auth-context';
+import { performICloudSync, setupICloudAutoSyncListener } from '@/services/icloud-sync-service';
 
 const PRIMARY_TASTINGS_KEY = '@bjcp_tastings';
 const LEGACY_TASTINGS_KEY = '@bjcp_tastings_history';
@@ -53,6 +54,15 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadLocalTastings();
+
+    // Iniciar el listener de sincronización automática de iCloud en segundo plano
+    const cleanup = setupICloudAutoSyncListener(() => {
+      loadLocalTastings();
+    });
+
+    return () => {
+      cleanup();
+    };
   }, []);
 
   const saveTasting = async (
@@ -74,9 +84,12 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
     const updated = [newTasting, ...tastings.filter((t) => t.id !== id)];
     setTastings(updated);
 
-    // Save locally
+    // Guardar localmente
     await AsyncStorage.setItem(PRIMARY_TASTINGS_KEY, JSON.stringify(updated));
     await AsyncStorage.setItem(LEGACY_TASTINGS_KEY, JSON.stringify(updated));
+
+    // Sincronizar silenciosamente con iCloud en segundo plano
+    performICloudSync().catch((e) => console.warn('Background iCloud sync error:', e));
 
     return newTasting;
   };
@@ -87,6 +100,9 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
       setTastings(updated);
       await AsyncStorage.setItem(PRIMARY_TASTINGS_KEY, JSON.stringify(updated));
       await AsyncStorage.setItem(LEGACY_TASTINGS_KEY, JSON.stringify(updated));
+
+      // Sincronizar borrado con iCloud
+      performICloudSync().catch((e) => console.warn('Background iCloud sync error on delete:', e));
       return true;
     } catch (e) {
       console.warn('Error deleting tasting:', e);
@@ -99,8 +115,8 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
   const getTastingsByStyle = (styleId: string) =>
     tastings.filter((t) => t.styleId.toLowerCase() === styleId.toLowerCase());
 
-  // Stub de compatibilidad
   const syncWithCloud = async () => {
+    await performICloudSync();
     await loadLocalTastings();
   };
 

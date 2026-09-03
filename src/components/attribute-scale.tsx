@@ -1,13 +1,13 @@
-import React, { useRef, useState, useMemo } from 'react';
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  PanResponder,
-  LayoutChangeEvent,
-} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Fonts, Spacing } from '@/constants/theme';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 interface AttributeScaleProps {
   label: string;
@@ -68,11 +68,19 @@ export function AttributeScale({
     measureTrack();
   };
 
-  const updatePosition = (pageX: number) => {
+  const lastRatioRef = useRef(safeValue);
+
+  const updatePosition = (pageX: number, isFinal = false) => {
     if (readOnly || !onChange || trackWidthRef.current <= 0) return;
     const localX = pageX - trackXRef.current;
     const ratio = Math.max(0, Math.min(1, localX / trackWidthRef.current));
-    onChange(Number(ratio.toFixed(3)));
+    const rounded = Number(ratio.toFixed(3));
+
+    // Solo notificar si cambió al menos 0.008 (~1%) o al soltar el dedo
+    if (!isFinal && Math.abs(rounded - lastRatioRef.current) < 0.008) return;
+
+    lastRatioRef.current = rounded;
+    onChange(rounded);
   };
 
   // PanResponder configured for instant response with zero perceived lag:
@@ -101,6 +109,7 @@ export function AttributeScale({
               trackXRef.current = pageX;
               const localX = touchPageX - pageX;
               const ratio = Math.max(0, Math.min(1, localX / width));
+              lastRatioRef.current = Number(ratio.toFixed(3));
               onChange(Number(ratio.toFixed(3)));
             }
           });
@@ -109,6 +118,14 @@ export function AttributeScale({
         onPanResponderMove: (evt) => {
           if (readOnly || !onChange) return;
           updatePosition(evt.nativeEvent.pageX);
+        },
+        onPanResponderRelease: (evt) => {
+          if (readOnly || !onChange) return;
+          updatePosition(evt.nativeEvent.pageX, true);
+        },
+        onPanResponderTerminate: (evt) => {
+          if (readOnly || !onChange) return;
+          updatePosition(evt.nativeEvent.pageX, true);
         },
       }),
     [readOnly, onChange]
@@ -196,9 +213,6 @@ export function AttributeScale({
           ref={trackRef}
           style={styles.trackContainer}
           onLayout={handleTrackLayout}
-          onTouchStart={(evt) => {
-            if (!readOnly) updatePosition(evt.nativeEvent.pageX);
-          }}
           {...(readOnly ? {} : panResponder.panHandlers)}
         >
           {/* Base Horizontal Track Line */}

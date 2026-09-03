@@ -46,8 +46,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const cachedProfile = await AsyncStorage.getItem(LOCAL_USER_KEY);
         if (cachedProfile) {
           try {
-            setProfile(JSON.parse(cachedProfile));
-          } catch {}
+            const parsed = JSON.parse(cachedProfile);
+            setProfile({
+              ...defaultProfile,
+              ...parsed,
+              fullName: parsed.fullName || defaultProfile.fullName,
+              bjcpRank: parsed.bjcpRank || defaultProfile.bjcpRank,
+            });
+          } catch {
+            setProfile({ ...defaultProfile, id: currentGuestId });
+          }
         } else {
           setProfile({ ...defaultProfile, id: currentGuestId });
         }
