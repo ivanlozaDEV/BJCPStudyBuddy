@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import { usePurchases } from '@/context/purchases-context';
 import { useTranslation } from '@/context/language-context';
 import { useTastings } from '@/context/tastings-context';
 import { TastingNote, getQualityTier } from '@/types/tasting';
@@ -142,6 +143,7 @@ export default function TastingsScreen() {
   const { t, language } = useTranslation();
   const { profile } = useAuth();
   const { tastings, stats } = useTastings();
+  const { isPro } = usePurchases();
 
   const [activeTab, setActiveTab] = useState<'my_tastings' | 'shared_tastings'>('my_tastings');
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,7 +214,13 @@ export default function TastingsScreen() {
           <ThemedText style={styles.headerTitle}>{t('myTastings')}</ThemedText>
 
           <Pressable
-            onPress={() => router.push('/judge-simulator' as any)}
+            onPress={() => {
+              if (!isPro) {
+                router.push('/paywall' as any);
+              } else {
+                router.push('/judge-simulator' as any);
+              }
+            }}
             style={({ pressed }) => [styles.newTastingBtn, pressed && { opacity: 0.85 }]}
           >
             <ThemedText style={styles.newTastingBtnText}>+ {t('newTasting')}</ThemedText>

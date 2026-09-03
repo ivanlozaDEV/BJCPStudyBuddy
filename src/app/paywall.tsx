@@ -14,7 +14,17 @@ import { MenuIcon } from '@/components/menu-icons';
 
 export default function PaywallScreen() {
   const { language } = useTranslation();
-  const { purchasePackage, restorePurchases, isLoading, lifetimePackage, storeProduct, isPro } = usePurchases();
+  const {
+    purchasePackage,
+    restorePurchases,
+    isLoading,
+    lifetimePackage,
+    storeProduct,
+    isPro,
+    isTrialActive,
+    trialDaysRemaining,
+    isLifetimePurchased,
+  } = usePurchases();
 
   const candidatePrice = storeProduct?.priceString || lifetimePackage?.product.priceString || '$9.99';
   const displayPrice = candidatePrice.includes('79.99') || candidatePrice.includes('11.99') ? '$9.99' : candidatePrice;
@@ -83,10 +93,40 @@ export default function PaywallScreen() {
             <ThemedText style={styles.title}>
               BrewStudy <ThemedText style={styles.proBadge}>PRO</ThemedText>
             </ThemedText>
+
+            {/* Trial Status Pill */}
+            {isLifetimePurchased ? (
+              <View style={styles.statusPillPurchased}>
+                <ThemedText style={styles.statusPillPurchasedText}>
+                  {language === 'es' ? '⭐ ACCESO PRO ACTIVO' : '⭐ PRO ACCESS ACTIVE'}
+                </ThemedText>
+              </View>
+            ) : isTrialActive ? (
+              <View style={styles.statusPillTrial}>
+                <ThemedText style={styles.statusPillTrialText}>
+                  {language === 'es'
+                    ? `✨ PRUEBA ACTIVA • TE QUEDAN ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'DÍA' : 'DÍAS'}`
+                    : `✨ TRIAL ACTIVE • ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'DAY' : 'DAYS'} LEFT`}
+                </ThemedText>
+              </View>
+            ) : (
+              <View style={styles.statusPillExpired}>
+                <ThemedText style={styles.statusPillExpiredText}>
+                  {language === 'es' ? '⏱️ PRUEBA DE 7 DÍAS FINALIZADA' : '⏱️ 7-DAY TRIAL EXPIRED'}
+                </ThemedText>
+              </View>
+            )}
+
             <ThemedText style={styles.subtitle}>
-              {language === 'es' 
-                ? 'Desbloquea el Motor Interactivo de Estudio y Cata' 
-                : 'Unlock the Interactive Study and Tasting Engine'}
+              {isLifetimePurchased
+                ? (language === 'es' ? 'Tienes acceso ilimitado a todas las herramientas.' : 'You have unlimited access to all tools.')
+                : isTrialActive
+                ? (language === 'es'
+                    ? `Estás en tu semana de prueba gratuita. Desbloquea la versión completa para asegurar tu acceso.`
+                    : `You are in your 7-day free trial. Unlock full access to keep evaluating without interruption.`)
+                : (language === 'es'
+                    ? 'Tu prueba gratuita ha finalizado. Desbloquea BrewStudy PRO para seguir creando catas y haciendo exámenes.'
+                    : 'Your free trial has ended. Unlock BrewStudy PRO to keep evaluating and taking exams.')}
             </ThemedText>
           </View>
 
@@ -114,12 +154,12 @@ export default function PaywallScreen() {
             />
           </View>
 
-          {/* Single Lifetime Offer Card */}
+          {/* Single Offer Card */}
           <View style={styles.plansContainer}>
             <View style={[styles.planCard, styles.planCardSelected]}>
               <View style={styles.planBadge}>
                 <ThemedText style={styles.planBadgeText}>
-                  {language === 'es' ? '✨ PAGO ÚNICO • DE POR VIDA' : '✨ ONE-TIME PAYMENT • LIFETIME'}
+                  {language === 'es' ? '✨ PAGO ÚNICO' : '✨ ONE-TIME PURCHASE'}
                 </ThemedText>
               </View>
               <View style={styles.planRow}>
@@ -153,15 +193,15 @@ export default function PaywallScreen() {
                 pressed && { opacity: 0.85 },
               ]}
               onPress={handlePurchase}
-              disabled={isLoading}
+              disabled={isLoading || isLifetimePurchased}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#161B22" />
               ) : (
                 <ThemedText style={styles.purchaseButtonText}>
-                  {isPro
+                  {isLifetimePurchased
                     ? (language === 'es' ? '✓ Acceso PRO Activo' : '✓ PRO Access Active')
-                    : (language === 'es' ? `Desbloquear PRO Para Siempre (${displayPrice})` : `Unlock PRO Forever (${displayPrice})`)}
+                    : (language === 'es' ? `Desbloquear Versión Completa (${displayPrice})` : `Unlock Full Access (${displayPrice})`)}
                 </ThemedText>
               )}
             </Pressable>
@@ -273,6 +313,54 @@ const styles = StyleSheet.create({
   proBadge: {
     color: '#F2B824',
     fontFamily: Fonts.spaceGroteskBold,
+  },
+  statusPillTrial: {
+    backgroundColor: 'rgba(242, 184, 36, 0.18)',
+    borderWidth: 1,
+    borderColor: '#F2B824',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  statusPillTrialText: {
+    color: '#F2B824',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  statusPillPurchased: {
+    backgroundColor: 'rgba(82, 183, 136, 0.2)',
+    borderWidth: 1,
+    borderColor: '#52B788',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  statusPillPurchasedText: {
+    color: '#52B788',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  statusPillExpired: {
+    backgroundColor: 'rgba(224, 86, 36, 0.2)',
+    borderWidth: 1,
+    borderColor: '#E05624',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  statusPillExpiredText: {
+    color: '#FF7A50',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 14,

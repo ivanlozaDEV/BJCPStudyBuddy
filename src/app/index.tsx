@@ -16,10 +16,15 @@ import { MenuIcon, MenuIconProps } from '@/components/menu-icons';
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const { t } = useTranslation();
-  const { isPro } = usePurchases();
+  const { t, language } = useTranslation();
+  const { isPro, isTrialActive, trialDaysRemaining, isLifetimePurchased } = usePurchases();
 
-  const handleMenuPress = (route: string, isProFeature: boolean) => {
+  const handleMenuPress = (route: string, isProFeature: boolean, optionId: string) => {
+    // If it's myTastings, allow opening the screen to read past tastings in read-only mode
+    if (optionId === 'myTastings') {
+      router.push(route as any);
+      return;
+    }
     if (isProFeature && !isPro) {
       router.push('/paywall' as any);
     } else {
@@ -118,6 +123,30 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             </View>
+
+            {/* Status Pill in Hero */}
+            {!isLifetimePurchased && isTrialActive ? (
+              <Pressable
+                onPress={() => router.push('/paywall' as any)}
+                style={({ pressed }) => [styles.heroPillTrial, pressed && { opacity: 0.8 }]}
+              >
+                <ThemedText style={styles.heroPillTrialText}>
+                  {language === 'es'
+                    ? `✨ PRUEBA PRO: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'DÍA' : 'DÍAS'}`
+                    : `✨ PRO TRIAL: ${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'DAY' : 'DAYS'}`}
+                </ThemedText>
+              </Pressable>
+            ) : !isLifetimePurchased ? (
+              <Pressable
+                onPress={() => router.push('/paywall' as any)}
+                style={({ pressed }) => [styles.heroPillExpired, pressed && { opacity: 0.8 }]}
+              >
+                <ThemedText style={styles.heroPillExpiredText}>
+                  {language === 'es' ? '🔒 PRUEBA FINALIZADA • ACTIVAR PRO' : '🔒 TRIAL ENDED • UNLOCK PRO'}
+                </ThemedText>
+              </Pressable>
+            ) : null}
+
             <ThemedText style={styles.subtitle}>
               {t('selectOption')}
             </ThemedText>
@@ -126,15 +155,16 @@ export default function HomeScreen() {
           {/* Interactive Stack of Menu Cards */}
           <View style={styles.menuStack}>
             {menuOptions.map((option) => {
+              const isLocked = option.isPro && !isPro;
               return (
                 <Pressable
                   key={option.id}
-                  onPress={() => handleMenuPress(option.route, option.isPro)}
+                  onPress={() => handleMenuPress(option.route, option.isPro, option.id)}
                   style={({ pressed }) => [
                     styles.menuCard,
                     { 
                       backgroundColor: theme.backgroundElement, 
-                      borderColor: (option.isPro && !isPro) ? 'rgba(242, 184, 36, 0.4)' : theme.border 
+                      borderColor: isLocked ? 'rgba(242, 184, 36, 0.4)' : theme.border 
                     },
                     pressed && styles.cardPressed
                   ]}
@@ -151,9 +181,9 @@ export default function HomeScreen() {
                         <ThemedText type="smallBold" style={styles.cardTitle}>
                           {option.title}
                         </ThemedText>
-                        {option.isPro && !isPro && (
+                        {isLocked && (
                           <View style={styles.proBadge}>
-                            <ThemedText style={styles.proBadgeText}>PRO</ThemedText>
+                            <ThemedText style={styles.proBadgeText}>PRO 🔒</ThemedText>
                           </View>
                         )}
                       </View>
@@ -226,6 +256,54 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.spaceGrotesk,
     letterSpacing: -1.0,
     marginTop: -8,
+  },
+  heroPillTrial: {
+    backgroundColor: 'rgba(242, 184, 36, 0.18)',
+    borderWidth: 1,
+    borderColor: '#F2B824',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginTop: Spacing.two,
+    alignSelf: 'center',
+  },
+  heroPillTrialText: {
+    color: '#F2B824',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  heroPillLifetime: {
+    backgroundColor: 'rgba(82, 183, 136, 0.2)',
+    borderWidth: 1,
+    borderColor: '#52B788',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginTop: Spacing.two,
+    alignSelf: 'center',
+  },
+  heroPillLifetimeText: {
+    color: '#52B788',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  heroPillExpired: {
+    backgroundColor: 'rgba(224, 86, 36, 0.2)',
+    borderWidth: 1,
+    borderColor: '#E05624',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginTop: Spacing.two,
+    alignSelf: 'center',
+  },
+  heroPillExpiredText: {
+    color: '#FF7A50',
+    fontFamily: Fonts.spaceGroteskBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 11,

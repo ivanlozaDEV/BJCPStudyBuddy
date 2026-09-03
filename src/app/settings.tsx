@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const { t, language, setLanguage } = useTranslation();
   const { profile, updateProfile } = useAuth();
-  const { isPro, restorePurchases } = usePurchases();
+  const { isPro, isTrialActive, trialDaysRemaining, isLifetimePurchased, restorePurchases } = usePurchases();
   const { reloadTastings, stats } = useTastings();
 
   // Defensive Profile State
@@ -479,7 +479,7 @@ export default function SettingsScreen() {
           </View>
 
           <ThemedView style={styles.settingsGroup}>
-            {isPro ? (
+            {isLifetimePurchased ? (
               <View style={styles.proActiveCard}>
                 <View style={styles.proActiveHeader}>
                   <ThemedText style={styles.proActiveTitle}>
@@ -487,14 +487,14 @@ export default function SettingsScreen() {
                   </ThemedText>
                   <View style={styles.lifetimeBadge}>
                     <ThemedText style={styles.lifetimeBadgeText}>
-                      LIFETIME
+                      PRO ⭐
                     </ThemedText>
                   </View>
                 </View>
                 <ThemedText style={styles.proActiveDesc}>
                   {language === 'es'
-                    ? '✨ Tienes acceso ilimitado de por vida al simulador de 50 pts, banco curado de preguntas y comparador.'
-                    : '✨ You have lifetime unlimited access to 50-pt simulator, curated question bank, and style comparator.'}
+                    ? '✨ Tienes acceso ilimitado al simulador de 50 pts, banco curado de preguntas y comparador.'
+                    : '✨ You have unlimited access to 50-pt simulator, curated question bank, and style comparator.'}
                 </ThemedText>
                 
                 <View style={styles.divider} />
@@ -508,12 +508,35 @@ export default function SettingsScreen() {
                     Alert.alert(
                       language === 'es' ? 'Restaurar Compras' : 'Restore Purchases',
                       ok
-                        ? language === 'es' ? 'Tu acceso PRO de por vida ha sido verificado.' : 'Your lifetime PRO access has been verified.'
+                        ? language === 'es' ? 'Tu acceso PRO ha sido verificado.' : 'Your PRO access has been verified.'
                         : language === 'es' ? 'No se encontraron compras previas.' : 'No previous purchases found.'
                     );
                   }
                 )}
               </View>
+            ) : isTrialActive ? (
+              <Pressable
+                style={styles.proUpgradeBanner}
+                onPress={() => router.push('/paywall' as any)}
+              >
+                <View style={styles.proUpgradeLeft}>
+                  <ThemedText style={styles.proUpgradeTitle}>
+                    {language === 'es'
+                      ? `Prueba PRO Activa (${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'día' : 'días'})`
+                      : `PRO Trial Active (${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'day' : 'days'})`}
+                  </ThemedText>
+                  <ThemedText style={styles.proUpgradeSubtitle}>
+                    {language === 'es'
+                      ? '✨ Desbloquea la versión completa para asegurar tu acceso'
+                      : '✨ Unlock full access to keep evaluating'}
+                  </ThemedText>
+                </View>
+                <View style={styles.proUpgradeButton}>
+                  <ThemedText style={styles.proUpgradeButtonText}>
+                    {language === 'es' ? 'Ver PRO' : 'Get PRO'}
+                  </ThemedText>
+                </View>
+              </Pressable>
             ) : (
               <Pressable
                 style={styles.proUpgradeBanner}
@@ -524,7 +547,7 @@ export default function SettingsScreen() {
                     {language === 'es' ? 'Desbloquear BrewStudy PRO' : 'Unlock BrewStudy PRO'}
                   </ThemedText>
                   <ThemedText style={styles.proUpgradeSubtitle}>
-                    {language === 'es' ? '$9.99 Pago Único • Para Siempre' : '$9.99 One-Time Payment • Lifetime'}
+                    {language === 'es' ? '$9.99 Pago Único' : '$9.99 One-Time Purchase'}
                   </ThemedText>
                 </View>
                 <View style={styles.proUpgradeButton}>
@@ -583,7 +606,7 @@ export default function SettingsScreen() {
             {renderSettingRow(
               '📱',
               language === 'es' ? 'Versión de la App' : 'App Version',
-              '2.1.0 (Lifetime)',
+              '2.1.0',
               undefined
             )}
           </ThemedView>

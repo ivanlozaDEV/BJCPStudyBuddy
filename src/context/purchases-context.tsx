@@ -6,6 +6,9 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { useAuth } from './auth-context';
 
 const LOCAL_IS_PRO_KEY = '@bjcp_is_pro_status';
+const TRIAL_START_KEY = '@brewstudy_trial_start_date_v1';
+const TRIAL_DURATION_DAYS = 7;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 // RevenueCat Entitlement and Product Configuration
 export const ENTITLEMENT_ID = 'brew_study_pro';
@@ -23,6 +26,9 @@ export const isRevenueCatConfigured = () => {
 
 interface PurchasesContextData {
   isPro: boolean;
+  isTrialActive: boolean;
+  trialDaysRemaining: number;
+  isLifetimePurchased: boolean;
   customerInfo: CustomerInfo | null;
   packages: PurchasesPackage[];
   lifetimePackage: PurchasesPackage | null;
@@ -40,7 +46,9 @@ const PurchasesContext = createContext<PurchasesContextData | null>(null);
 
 export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
-  const [isPro, setIsPro] = useState(false);
+  const [isLifetimePurchased, setIsLifetimePurchased] = useState(false);
+  const [isTrialActive, setIsTrialActive] = useState(true);
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState(TRIAL_DURATION_DAYS);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [lifetimePackage, setLifetimePackage] = useState<PurchasesPackage | null>(null);
@@ -49,6 +57,9 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const configured = isRevenueCatConfigured();
+
+  // Effective isPro status: true if user purchased lifetime OR if within 7-day trial period
+  const isPro = isLifetimePurchased || isTrialActive;
 
   // Helper to check if entitlement is active
   const checkProEntitlement = (info: CustomerInfo | null): boolean => {
@@ -61,10 +72,27 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // 1. Configure and Initialize RevenueCat SDK
+  // 1. Configure and Initialize RevenueCat SDK & 7-Day Free Trial
   useEffect(() => {
     async function initPurchases() {
       try {
+        // Step A: Initialize 7-Day Local Trial calculation
+        try {
+          let storedDate = await AsyncStorage.getItem(TRIAL_START_KEY);
+          let startTimestamp = storedDate ? parseInt(storedDate, 10) : null;
+          if (!startTimestamp || isNaN(startTimestamp)) {
+            startTimestamp = Date.now();
+            await AsyncStorage.setItem(TRIAL_START_KEY, startTimestamp.toString());
+          }
+          const elapsedDays = (Date.now() - startTimestamp) / MS_PER_DAY;
+          const remaining = Math.max(0, Math.ceil(TRIAL_DURATION_DAYS - elapsedDays));
+          setTrialDaysRemaining(remaining);
+          setIsTrialActive(elapsedDays < TRIAL_DURATION_DAYS);
+        } catch (e) {
+          console.warn('Error calculating trial status:', e);
+        }
+
+        // Step B: Initialize StoreKit / RevenueCat SDK
         if (Platform.OS === 'ios' || Platform.OS === 'android') {
           Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
 
@@ -78,7 +106,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
               const info = await Purchases.getCustomerInfo();
               setCustomerInfo(info);
               const hasPro = checkProEntitlement(info);
-              if (hasPro) setIsPro(true);
+              if (hasPro) setIsLifetimePurchased(true);
             } catch (e) {
               console.warn('RevenueCat: Could not fetch initial customer info', e);
             }
@@ -111,7 +139,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
             Purchases.addCustomerInfoUpdateListener((info) => {
               setCustomerInfo(info);
               const hasPro = checkProEntitlement(info);
-              setIsPro(hasPro);
+              setIsLifetimePurchased(hasPro);
               AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
             });
           }
@@ -123,7 +151,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
         try {
           const localPro = await AsyncStorage.getItem(LOCAL_IS_PRO_KEY);
           if (localPro) {
-            setIsPro(JSON.parse(localPro));
+            setIsLifetimePurchased(JSON.parse(localPro));
           }
         } catch {}
         setIsLoading(false);
@@ -142,19 +170,19 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       if (targetPackage) {
         const { customerInfo } = await Purchases.purchasePackage(targetPackage);
         const hasPro = checkProEntitlement(customerInfo);
-        setIsPro(hasPro);
+        setIsLifetimePurchased(hasPro);
         await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
         return hasPro;
       } else if (storeProduct) {
         const { customerInfo } = await Purchases.purchaseStoreProduct(storeProduct);
         const hasPro = checkProEntitlement(customerInfo);
-        setIsPro(hasPro);
+        setIsLifetimePurchased(hasPro);
         await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
         return hasPro;
       } else {
         // Mock fallback in development
         if (__DEV__) {
-          setIsPro(true);
+          setIsLifetimePurchased(true);
           await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(true));
           return true;
         }
@@ -177,7 +205,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       const restoredInfo = await Purchases.restorePurchases();
       setCustomerInfo(restoredInfo);
       const hasPro = checkProEntitlement(restoredInfo);
-      setIsPro(hasPro);
+      setIsLifetimePurchased(hasPro);
       await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(hasPro));
       return hasPro;
     } catch (error) {
@@ -198,7 +226,7 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       switch (paywallResult) {
         case PAYWALL_RESULT.PURCHASED:
         case PAYWALL_RESULT.RESTORED:
-          setIsPro(true);
+          setIsLifetimePurchased(true);
           await AsyncStorage.setItem(LOCAL_IS_PRO_KEY, JSON.stringify(true));
           return true;
         case PAYWALL_RESULT.CANCELLED:
@@ -226,6 +254,9 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     <PurchasesContext.Provider
       value={{
         isPro,
+        isTrialActive,
+        trialDaysRemaining,
+        isLifetimePurchased,
         customerInfo,
         packages,
         lifetimePackage,
