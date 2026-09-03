@@ -16,8 +16,8 @@ export const PRODUCT_ID_LIFETIME = 'brewstudy_pro_lifetime_999';
 export const PRODUCT_ID_ANNUAL = 'brewstudy_pro_annual_1199';
 
 // RevenueCat Public API Keys
-const REVENUECAT_APPLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'test_ToSsdrPqYuaJTPHEcNdVXZlOKXn';
-const REVENUECAT_GOOGLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'test_ToSsdrPqYuaJTPHEcNdVXZlOKXn';
+const REVENUECAT_APPLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'appl_SKgYRRyopYxguWygfHmMuJyNBLE';
+const REVENUECAT_GOOGLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'appl_SKgYRRyopYxguWygfHmMuJyNBLE';
 
 export const isRevenueCatConfigured = () => {
   const key = Platform.OS === 'ios' ? REVENUECAT_APPLE_KEY : REVENUECAT_GOOGLE_KEY;
