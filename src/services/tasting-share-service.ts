@@ -1,5 +1,6 @@
 import { Share, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { TastingNote, UserProfile, getQualityTier } from '@/types/tasting';
 
 export interface SharedTastingPayload {
@@ -10,6 +11,7 @@ export interface SharedTastingPayload {
     fullName: string;
     bjcpRank: string;
     bjcpId?: string;
+    avatarBase64?: string;
   };
   tasting: TastingNote & {
     photoBase64?: string;
@@ -67,8 +69,8 @@ async function base64ToLocalFile(base64Data: string, fileName: string): Promise<
  */
 export function generateTastingTextSummary(tasting: TastingNote, judge?: UserProfile, lang: 'es' | 'en' = 'es'): string {
   const tier = getQualityTier(tasting.totalScore);
-  const judgeName = judge?.fullName || (lang === 'es' ? 'Juez BJCP' : 'BJCP Judge');
-  const judgeRank = judge?.bjcpRank ? `(${judge.bjcpRank}${judge.bjcpId ? ` #${judge.bjcpId}` : ''})` : '';
+  const judgeName = judge?.fullName || tasting.judgeName || (lang === 'es' ? 'Juez BJCP' : 'BJCP Judge');
+  const judgeRank = judge?.bjcpRank || tasting.judgeRank ? `(${judge?.bjcpRank || tasting.judgeRank}${judge?.bjcpId || tasting.judgeId ? ` #${judge?.bjcpId || tasting.judgeId}` : ''})` : '';
 
   if (lang === 'es') {
     return `🍺 *FICHA DE CATA BJCP (50 PTS)*
@@ -127,7 +129,7 @@ export async function shareTastingText(tasting: TastingNote, judge?: UserProfile
 }
 
 /**
- * Exporta un archivo de ficha `.bjcptasting` para enviarlo por AirDrop, WhatsApp o Archivos a otro juez
+ * Exporta un archivo de ficha `.bjcptasting` para enviarlo por AirDrop, WhatsApp, iMessage, Mail o Archivos a otro juez
  */
 export async function shareTastingFile(
   tasting: TastingNote,
@@ -159,7 +161,7 @@ export async function shareTastingFile(
         bjcpRank: judge?.bjcpRank || tasting.judgeRank || 'Apprentice',
         bjcpId: judge?.bjcpId || tasting.judgeId,
         avatarBase64: judgeAvatarB64,
-      } as any,
+      },
       tasting: enrichedTasting,
     };
 
@@ -172,12 +174,20 @@ export async function shareTastingFile(
       encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
     });
 
-    // Abrir hoja nativa de compartir
-    await Share.share({
-      title: `${tasting.beerName} - Ficha BJCP (${tasting.totalScore} pts)`,
-      url: fileUri,
-      message: Platform.OS === 'android' ? JSON.stringify(payload) : undefined,
-    });
+    const isSharingAvailable = await Sharing.isAvailableAsync();
+    if (isSharingAvailable) {
+      await Sharing.shareAsync(fileUri, {
+        UTI: 'com.ivanloza.bjcpstudybuddy.tasting',
+        mimeType: 'application/json',
+        dialogTitle: `${tasting.beerName} - Ficha BJCP (${tasting.totalScore} pts)`,
+      });
+    } else {
+      await Share.share({
+        title: `${tasting.beerName} - Ficha BJCP (${tasting.totalScore} pts)`,
+        url: fileUri,
+        message: Platform.OS === 'android' ? JSON.stringify(payload) : undefined,
+      });
+    }
 
     return { success: true };
   } catch (error: any) {
@@ -221,8 +231,8 @@ export async function parseSharedTasting(fileContent: string): Promise<{
 
     // Restaurar avatar del juez
     let restoredJudgeAvatar: string | undefined;
-    if ((parsed.judge as any)?.avatarBase64) {
-      restoredJudgeAvatar = await base64ToLocalFile((parsed.judge as any).avatarBase64, `${id}_judge.jpg`);
+    if (parsed.judge?.avatarBase64) {
+      restoredJudgeAvatar = await base64ToLocalFile(parsed.judge.avatarBase64, `${id}_judge.jpg`);
     }
 
     item.id = id;
@@ -232,6 +242,8 @@ export async function parseSharedTasting(fileContent: string): Promise<{
     if (restoredJudgeAvatar) {
       item.judgeAvatarUrl = restoredJudgeAvatar;
     }
+    item.isShared = true;
+    item.importedAt = new Date().toISOString();
 
     return {
       tasting: item,

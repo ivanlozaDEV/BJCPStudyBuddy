@@ -17,7 +17,43 @@
       "bundleIdentifier": "com.ivanloza.bjcpstudybuddy",
       "buildNumber": "7",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "BJCP Tasting Scoresheet",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["com.ivanloza.bjcpstudybuddy.tasting"],
+            "CFBundleTypeExtensions": ["bjcptasting"]
+          },
+          {
+            "CFBundleTypeName": "BrewStudy Backup",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["com.ivanloza.bjcpstudybuddy.backup"],
+            "CFBundleTypeExtensions": ["brewstudy"]
+          }
+        ],
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.ivanloza.bjcpstudybuddy.tasting",
+            "UTTypeDescription": "BJCP Tasting Scoresheet File",
+            "UTTypeConformsTo": ["public.data", "public.json"],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": ["bjcptasting"],
+              "public.mime-type": ["application/json"]
+            }
+          },
+          {
+            "UTTypeIdentifier": "com.ivanloza.bjcpstudybuddy.backup",
+            "UTTypeDescription": "BrewStudy Backup File",
+            "UTTypeConformsTo": ["public.data", "public.json"],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": ["brewstudy"],
+              "public.mime-type": ["application/json"]
+            }
+          }
+        ]
       }
     },
     "android": {
@@ -28,7 +64,19 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ivanloza.bjcpstudybuddy"
+      "package": "com.ivanloza.bjcpstudybuddy",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT", "BROWSABLE"],
+          "data": [
+            { "scheme": "file", "pathPattern": ".*\\.bjcptasting", "mimeType": "*/*" },
+            { "scheme": "content", "pathPattern": ".*\\.bjcptasting", "mimeType": "*/*" },
+            { "scheme": "file", "pathPattern": ".*\\.brewstudy", "mimeType": "*/*" },
+            { "scheme": "content", "pathPattern": ".*\\.brewstudy", "mimeType": "*/*" }
+          ]
+        }
+      ]
     },
     "web": {
       "output": "static",

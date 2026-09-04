@@ -8,6 +8,9 @@ import {
   Alert,
   Modal,
   Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -165,12 +168,18 @@ export default function TastingDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id, justSaved } = useLocalSearchParams<{ id: string; justSaved?: string }>();
   const { t, language } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const { getTastingById, deleteTasting } = useTastings();
 
   const tasting = getTastingById(id || '');
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<{ uri: string; title: string } | null>(null);
   const [showSavedToast, setShowSavedToast] = useState(justSaved === 'true');
+
+  // Modal para confirmar/editar datos del juez antes de compartir si no están configurados
+  const [showJudgeProfileModal, setShowJudgeProfileModal] = useState(false);
+  const [judgeNameInput, setJudgeNameInput] = useState('');
+  const [judgeRankInput, setJudgeRankInput] = useState<'Apprentice' | 'Recognized' | 'Certified' | 'National' | 'Master' | 'Grand Master'>('Apprentice');
+  const [judgeIdInput, setJudgeIdInput] = useState('');
 
   useEffect(() => {
     if (justSaved === 'true') {
@@ -225,12 +234,13 @@ export default function TastingDetailScreen() {
     }
   );
 
-  // Verificar si la cata fue evaluada por otro juez externo
+  // Verificar si la cata fue evaluada por otro juez externo o importada
   const isExternalJudge =
-    tasting.judgeName &&
-    tasting.judgeName !== profile?.fullName &&
-    tasting.judgeName !== 'Juez en Formación' &&
-    tasting.judgeName !== 'Judge in Training';
+    Boolean(tasting.isShared) ||
+    (Boolean(tasting.judgeName) &&
+      tasting.judgeName !== profile?.fullName &&
+      tasting.judgeName !== 'Juez en Formación' &&
+      tasting.judgeName !== 'Judge in Training');
 
   const safeBack = () => {
     if (router.canGoBack()) {
@@ -240,24 +250,64 @@ export default function TastingDetailScreen() {
     }
   };
 
-  const handleShare = () => {
+  const openShareChoiceModal = (judgeToUse?: any) => {
+    const judgeProfile = judgeToUse || profile;
     Alert.alert(
       language === 'es' ? '📤 Compartir Ficha de Cata' : '📤 Share BJCP Scoresheet',
       language === 'es'
-        ? 'Elige cómo deseas compartir esta evaluación:'
-        : 'Choose how you want to share this evaluation:',
+        ? `Se compartirá firmada por: ${judgeProfile?.fullName || 'Juez BJCP'}`
+        : `Will be shared signed by: ${judgeProfile?.fullName || 'BJCP Judge'}`,
       [
         {
           text: language === 'es' ? '💬 Resumen para WhatsApp / Redes' : '💬 WhatsApp / Text Summary',
-          onPress: () => shareTastingText(tasting, profile, language),
+          onPress: () => shareTastingText(tasting, judgeProfile, language),
         },
         {
-          text: language === 'es' ? '📱 Enviar Ficha Completa (.bjcptasting)' : '📱 Send Full Scoresheet (.bjcptasting)',
-          onPress: () => shareTastingFile(tasting, profile, language),
+          text: language === 'es' ? '📱 Enviar Ficha (.bjcptasting / AirDrop / Archivo)' : '📱 Send Full Scoresheet (.bjcptasting)',
+          onPress: () => shareTastingFile(tasting, judgeProfile, language),
         },
         { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const handleShare = () => {
+    const isUnnamed =
+      !profile?.fullName ||
+      profile.fullName === 'Juez en Formación' ||
+      profile.fullName === 'Judge in Training' ||
+      profile.fullName.trim().length === 0;
+
+    if (isUnnamed) {
+      setJudgeNameInput(profile?.fullName && !isUnnamed ? profile.fullName : '');
+      setJudgeRankInput(profile?.bjcpRank || 'Apprentice');
+      setJudgeIdInput(profile?.bjcpId || '');
+      setShowJudgeProfileModal(true);
+    } else {
+      openShareChoiceModal(profile);
+    }
+  };
+
+  const handleSaveProfileAndProceedShare = async () => {
+    const trimmedName = judgeNameInput.trim();
+    const updatedProfileData = {
+      ...profile,
+      fullName: trimmedName || 'Juez BJCP',
+      bjcpRank: judgeRankInput || 'Apprentice',
+      bjcpId: judgeIdInput.trim() || undefined,
+    };
+    try {
+      await updateProfile(updatedProfileData);
+    } catch (e) {
+      console.warn('Error saving profile before sharing:', e);
+    }
+    setShowJudgeProfileModal(false);
+    openShareChoiceModal(updatedProfileData);
+  };
+
+  const handleSkipProfileAndProceedShare = () => {
+    setShowJudgeProfileModal(false);
+    openShareChoiceModal(profile);
   };
 
   const handleDelete = () => {
@@ -354,7 +404,7 @@ export default function TastingDetailScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* External Evaluator Judge Card (Only shown if created by another judge) */}
+          {/* External Evaluator Judge Card (Only shown if created by another judge or imported) */}
           {isExternalJudge && (
             <View style={styles.externalJudgeCard}>
               <View style={styles.externalJudgeAvatar}>
@@ -362,20 +412,37 @@ export default function TastingDetailScreen() {
                   <Image source={{ uri: tasting.judgeAvatarUrl }} style={styles.externalJudgeAvatarImg} />
                 ) : (
                   <ThemedText style={styles.externalJudgeAvatarText}>
-                    {tasting.judgeName?.charAt(0).toUpperCase()}
+                    {(tasting.judgeName || 'J').charAt(0).toUpperCase()}
                   </ThemedText>
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <ThemedText style={styles.externalJudgeLabel}>
-                  {language === 'es' ? 'FICHA RECIBIDA • JUEZ EVALUADOR' : 'RECEIVED SCORESHEET • EVALUATOR'}
-                </ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <ThemedText style={styles.externalJudgeLabel}>
+                    {language === 'es' ? 'FICHA RECIBIDA • JUEZ EVALUADOR' : 'RECEIVED SCORESHEET • EVALUATOR'}
+                  </ThemedText>
+                  <View style={styles.readOnlyBadge}>
+                    <ThemedText style={styles.readOnlyBadgeText}>
+                      🔒 {language === 'es' ? 'Solo Lectura' : 'Read-Only'}
+                    </ThemedText>
+                  </View>
+                </View>
                 <ThemedText style={styles.externalJudgeName}>
-                  {tasting.judgeName}
+                  {tasting.judgeName || (language === 'es' ? 'Juez BJCP' : 'BJCP Judge')}
                 </ThemedText>
                 <ThemedText style={styles.externalJudgeRank}>
-                  {tasting.judgeRank || 'Apprentice'} {tasting.judgeId ? `• ID: ${tasting.judgeId}` : ''}
+                  🎖️ {tasting.judgeRank || 'Apprentice'} {tasting.judgeId ? `• ID: ${tasting.judgeId}` : ''}
                 </ThemedText>
+                {tasting.importedAt && (
+                  <ThemedText style={styles.externalJudgeImportedDate}>
+                    📥 {language === 'es' ? 'Importada el: ' : 'Imported on: '}
+                    {new Date(tasting.importedAt).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </ThemedText>
+                )}
               </View>
             </View>
           )}
@@ -772,6 +839,114 @@ export default function TastingDetailScreen() {
               </Pressable>
             </View>
           </ThemedView>
+        </Modal>
+
+        {/* Modal: Confirm Judge Profile before Sharing */}
+        <Modal
+          visible={showJudgeProfileModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowJudgeProfileModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalBackdrop}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.judgeModalBox}>
+              <View style={styles.judgeModalHeader}>
+                <ThemedText style={styles.judgeModalTitle}>
+                  {language === 'es' ? '👤 Datos del Juez Evaluador' : '👤 Evaluator Judge Info'}
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowJudgeProfileModal(false)}
+                  style={styles.judgeModalCloseBtn}
+                  hitSlop={10}
+                >
+                  <ThemedText style={styles.judgeModalCloseText}>✕</ThemedText>
+                </Pressable>
+              </View>
+
+              <ThemedText style={styles.judgeModalDescription}>
+                {language === 'es'
+                  ? 'Antes de compartir, ingresa tu nombre para que tu ficha quede firmada con tu autoría y rango BJCP.'
+                  : 'Before sharing, please enter your name so the scoresheet is signed with your authorship and rank.'}
+              </ThemedText>
+
+              <View style={styles.judgeModalForm}>
+                <View style={styles.judgeInputGroup}>
+                  <ThemedText style={styles.judgeInputLabel}>
+                    {language === 'es' ? 'Nombre Completo' : 'Full Name'}
+                  </ThemedText>
+                  <TextInput
+                    style={styles.judgeTextInput}
+                    placeholder={language === 'es' ? 'Ej: Juan Pérez' : 'e.g. John Smith'}
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    value={judgeNameInput}
+                    onChangeText={setJudgeNameInput}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                <View style={styles.judgeInputGroup}>
+                  <ThemedText style={styles.judgeInputLabel}>
+                    {language === 'es' ? 'Rango BJCP' : 'BJCP Rank'}
+                  </ThemedText>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rankPillScroll}>
+                    {(['Apprentice', 'Recognized', 'Certified', 'National', 'Master', 'Grand Master'] as const).map((r) => {
+                      const isSelected = judgeRankInput === r;
+                      return (
+                        <Pressable
+                          key={r}
+                          onPress={() => setJudgeRankInput(r)}
+                          style={[styles.rankPill, isSelected && styles.rankPillActive]}
+                        >
+                          <ThemedText style={[styles.rankPillText, isSelected && styles.rankPillTextActive]}>
+                            {r}
+                          </ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                <View style={styles.judgeInputGroup}>
+                  <ThemedText style={styles.judgeInputLabel}>
+                    {language === 'es' ? 'BJCP ID (Opcional)' : 'BJCP ID (Optional)'}
+                  </ThemedText>
+                  <TextInput
+                    style={styles.judgeTextInput}
+                    placeholder={language === 'es' ? 'Ej: E1234' : 'e.g. E1234'}
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    value={judgeIdInput}
+                    onChangeText={setJudgeIdInput}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.judgeModalActions}>
+                <Pressable
+                  onPress={handleSaveProfileAndProceedShare}
+                  style={({ pressed }) => [styles.judgeModalPrimaryBtn, pressed && { opacity: 0.85 }]}
+                >
+                  <ThemedText style={styles.judgeModalPrimaryBtnText}>
+                    {language === 'es' ? 'Guardar y Compartir' : 'Save & Share'}
+                  </ThemedText>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSkipProfileAndProceedShare}
+                  style={({ pressed }) => [styles.judgeModalSecondaryBtn, pressed && { opacity: 0.8 }]}
+                >
+                  <ThemedText style={styles.judgeModalSecondaryBtnText}>
+                    {language === 'es' ? 'Compartir sin Nombre' : 'Share without Name'}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
       </SafeAreaView>
     </ThemedView>
@@ -1505,5 +1680,153 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+
+  // Read-only & External Judge styles
+  readOnlyBadge: {
+    backgroundColor: 'rgba(242, 184, 36, 0.2)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(242, 184, 36, 0.4)',
+  },
+  readOnlyBadgeText: {
+    fontSize: 9.5,
+    fontFamily: Fonts.spaceGroteskBold,
+    color: '#F2B824',
+  },
+  externalJudgeImportedDate: {
+    fontSize: 10,
+    fontFamily: Fonts.inter,
+    color: 'rgba(255, 255, 255, 0.55)',
+    marginTop: 2,
+  },
+
+  // Judge Profile Prompt Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  judgeModalBox: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#161B22',
+    borderRadius: 20,
+    padding: Spacing.four,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    gap: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  judgeModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  judgeModalTitle: {
+    fontSize: 16,
+    fontFamily: Fonts.spaceGroteskBold,
+    color: '#FFFFFF',
+  },
+  judgeModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  judgeModalCloseText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  judgeModalDescription: {
+    fontSize: 12.5,
+    fontFamily: Fonts.inter,
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 18,
+  },
+  judgeModalForm: {
+    gap: Spacing.two,
+  },
+  judgeInputGroup: {
+    gap: 6,
+  },
+  judgeInputLabel: {
+    fontSize: 11.5,
+    fontFamily: Fonts.manropeBold,
+    color: '#F2B824',
+  },
+  judgeTextInput: {
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: Fonts.inter,
+    color: '#FFFFFF',
+  },
+  rankPillScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  rankPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  rankPillActive: {
+    backgroundColor: 'rgba(242, 184, 36, 0.25)',
+    borderColor: '#F2B824',
+  },
+  rankPillText: {
+    fontSize: 11,
+    fontFamily: Fonts.inter,
+    color: 'rgba(255, 255, 255, 0.65)',
+  },
+  rankPillTextActive: {
+    color: '#F2B824',
+    fontFamily: Fonts.manropeBold,
+  },
+  judgeModalActions: {
+    gap: 8,
+    marginTop: 4,
+  },
+  judgeModalPrimaryBtn: {
+    backgroundColor: '#F2B824',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  judgeModalPrimaryBtnText: {
+    color: '#0A0C10',
+    fontSize: 14,
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  judgeModalSecondaryBtn: {
+    backgroundColor: 'transparent',
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  judgeModalSecondaryBtnText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    fontFamily: Fonts.inter,
   },
 });

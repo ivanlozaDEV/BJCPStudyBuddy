@@ -71,6 +71,8 @@ export interface TastingNote {
   createdAt: string;
   updatedAt: string;
   synced?: boolean;
+  isShared?: boolean;       // True if received/imported from another judge
+  importedAt?: string;     // Timestamp when imported
 }
 
 export interface UserProfile {

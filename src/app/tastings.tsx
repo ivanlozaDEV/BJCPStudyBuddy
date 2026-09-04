@@ -152,6 +152,7 @@ export default function TastingsScreen() {
 
   // Clasificar catas propias vs catas recibidas de otros jueces
   const isOwnTasting = (t: TastingNote) => {
+    if (t.isShared) return false;
     if (!t.judgeName) return true;
     if (t.judgeName === 'Juez en Formación' || t.judgeName === 'Judge in Training') return true;
     if (profile?.fullName && t.judgeName.trim().toLowerCase() === profile.fullName.trim().toLowerCase()) return true;

@@ -41,10 +41,14 @@ export function useIncomingFileHandler() {
                 onPress: async () => {
                   const saved = await saveTasting(parsed.tasting);
                   await reloadTastings();
-                  router.push({
-                    pathname: '/tasting-detail' as any,
-                    params: { id: saved.id },
-                  });
+                  // Ensure base route is /tastings so back navigation always works safely
+                  router.replace('/tastings' as any);
+                  setTimeout(() => {
+                    router.push({
+                      pathname: '/tasting-detail' as any,
+                      params: { id: saved.id },
+                    });
+                  }, 100);
                 },
               },
             ]
