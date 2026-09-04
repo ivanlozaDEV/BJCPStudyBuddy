@@ -4,6 +4,7 @@ import * as Crypto from 'expo-crypto';
 import { TastingNote, calculateTotalScore } from '@/types/tasting';
 import { useAuth } from './auth-context';
 import { performICloudSync, setupICloudAutoSyncListener } from '@/services/icloud-sync-service';
+import { resolvePhotoUri } from '@/utils/photo-storage';
 
 const PRIMARY_TASTINGS_KEY = '@bjcp_tastings';
 const LEGACY_TASTINGS_KEY = '@bjcp_tastings_history';
@@ -27,6 +28,15 @@ interface TastingsContextData {
 
 const TastingsContext = createContext<TastingsContextData | null>(null);
 
+function normalizeTastingPhotos(t: TastingNote): TastingNote {
+  return {
+    ...t,
+    photoUrl: resolvePhotoUri(t.photoUrl),
+    labelPhotoUrl: resolvePhotoUri(t.labelPhotoUrl),
+    judgeAvatarUrl: resolvePhotoUri(t.judgeAvatarUrl),
+  };
+}
+
 export function TastingsProvider({ children }: { children: React.ReactNode }) {
   const { guestId } = useAuth();
   const [tastings, setTastings] = useState<TastingNote[]>([]);
@@ -42,7 +52,8 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         try {
           const parsed: TastingNote[] = JSON.parse(stored);
-          setTastings(parsed);
+          const normalized = parsed.map(normalizeTastingPhotos);
+          setTastings(normalized);
         } catch {}
       }
     } catch (e) {
@@ -72,14 +83,14 @@ export function TastingsProvider({ children }: { children: React.ReactNode }) {
     const now = new Date().toISOString();
     const id = input.id || Crypto.randomUUID();
 
-    const newTasting: TastingNote = {
+    const newTasting: TastingNote = normalizeTastingPhotos({
       ...input,
       id,
-      userId: guestId || 'judge_local',
+      userId: input.userId || (input.isShared ? undefined : (guestId || 'judge_local')),
       totalScore,
       createdAt: input.id ? (tastings.find((t) => t.id === input.id)?.createdAt || now) : now,
       updatedAt: now,
-    };
+    });
 
     const updated = [newTasting, ...tastings.filter((t) => t.id !== id)];
     setTastings(updated);

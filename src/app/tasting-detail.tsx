@@ -26,7 +26,69 @@ import { getQualityTier, OFFICIAL_BJCP_DESCRIPTORS } from '@/types/tasting';
 import { ScoreDial } from '@/components/score-dial';
 import { BottomTabInset, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
 import { shareTastingFile, shareTastingText } from '@/services/tasting-share-service';
-import Svg, { Path, Circle, Line } from 'react-native-svg';
+import { resolvePhotoUri } from '@/utils/photo-storage';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+
+function LockBadgeSvg({ size = 10, color = '#F2B824' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={10} width={16} height={11} rx={2.5} fill={color} />
+      <Path
+        d="M7 10V7a5 5 0 0 1 10 0v3"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+      />
+      <Circle cx={12} cy={15} r={1.5} fill="#161B22" />
+    </Svg>
+  );
+}
+
+function JudgeMedalSvg({ size = 13, color = '#F2B824' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={8.5} r={5.5} fill={color} stroke="#E5A81E" strokeWidth={1} />
+      <Path
+        d="M9 13.5l-2.5 7.5 4.5-2 4.5 2L13 13.5"
+        fill={color}
+        stroke="#E5A81E"
+        strokeWidth={1}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={8.5} r={2.5} fill="#161B22" />
+    </Svg>
+  );
+}
+
+function CalendarDateSvg({ size = 11, color = 'rgba(255, 255, 255, 0.65)' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={3} y={4} width={18} height={17} rx={3} stroke={color} strokeWidth={1.8} />
+      <Line x1={3} y1={9} x2={21} y2={9} stroke={color} strokeWidth={1.8} />
+      <Line x1={8} y1={2} x2={8} y2={5} stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Line x1={16} y1={2} x2={16} y2={5} stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Circle cx={8} cy={13} r={1} fill={color} />
+      <Circle cx={12} cy={13} r={1} fill={color} />
+      <Circle cx={16} cy={13} r={1} fill={color} />
+      <Circle cx={8} cy={17} r={1} fill={color} />
+      <Circle cx={12} cy={17} r={1} fill={color} />
+    </Svg>
+  );
+}
+
+function JudgeSilhouetteSvg({ size = 22, color = '#0A0C10' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={8} r={4} fill={color} />
+      <Path
+        d="M4 20c0-3.5 3.5-6 8-6s8 2.5 8 6"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
 
 function GlassIconSvg({ size = 14 }: { size?: number }) {
   return (
@@ -172,6 +234,10 @@ export default function TastingDetailScreen() {
   const { getTastingById, deleteTasting } = useTastings();
 
   const tasting = getTastingById(id || '');
+  const glassPhotoUri = resolvePhotoUri(tasting?.photoUrl);
+  const labelPhotoUri = resolvePhotoUri(tasting?.labelPhotoUrl);
+  const judgeAvatarUri = resolvePhotoUri(tasting?.judgeAvatarUrl);
+
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<{ uri: string; title: string } | null>(null);
   const [showSavedToast, setShowSavedToast] = useState(justSaved === 'true');
 
@@ -408,12 +474,10 @@ export default function TastingDetailScreen() {
           {isExternalJudge && (
             <View style={styles.externalJudgeCard}>
               <View style={styles.externalJudgeAvatar}>
-                {tasting.judgeAvatarUrl ? (
-                  <Image source={{ uri: tasting.judgeAvatarUrl }} style={styles.externalJudgeAvatarImg} />
+                {judgeAvatarUri ? (
+                  <Image source={{ uri: judgeAvatarUri }} style={styles.externalJudgeAvatarImg} />
                 ) : (
-                  <ThemedText style={styles.externalJudgeAvatarText}>
-                    {(tasting.judgeName || 'J').charAt(0).toUpperCase()}
-                  </ThemedText>
+                  <JudgeSilhouetteSvg size={22} color="#0A0C10" />
                 )}
               </View>
               <View style={{ flex: 1 }}>
@@ -422,26 +486,33 @@ export default function TastingDetailScreen() {
                     {language === 'es' ? 'FICHA RECIBIDA • JUEZ EVALUADOR' : 'RECEIVED SCORESHEET • EVALUATOR'}
                   </ThemedText>
                   <View style={styles.readOnlyBadge}>
+                    <LockBadgeSvg size={10} color="#F2B824" />
                     <ThemedText style={styles.readOnlyBadgeText}>
-                      🔒 {language === 'es' ? 'Solo Lectura' : 'Read-Only'}
+                      {language === 'es' ? 'Solo Lectura' : 'Read-Only'}
                     </ThemedText>
                   </View>
                 </View>
                 <ThemedText style={styles.externalJudgeName}>
                   {tasting.judgeName || (language === 'es' ? 'Juez BJCP' : 'BJCP Judge')}
                 </ThemedText>
-                <ThemedText style={styles.externalJudgeRank}>
-                  🎖️ {tasting.judgeRank || 'Apprentice'} {tasting.judgeId ? `• ID: ${tasting.judgeId}` : ''}
-                </ThemedText>
-                {tasting.importedAt && (
-                  <ThemedText style={styles.externalJudgeImportedDate}>
-                    📥 {language === 'es' ? 'Importada el: ' : 'Imported on: '}
-                    {new Date(tasting.importedAt).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                <View style={styles.judgeRankRow}>
+                  <JudgeMedalSvg size={13} color="#F2B824" />
+                  <ThemedText style={styles.externalJudgeRank}>
+                    {tasting.judgeRank || 'Apprentice'} {tasting.judgeId ? `• ID: ${tasting.judgeId}` : ''}
                   </ThemedText>
+                </View>
+                {tasting.importedAt && (
+                  <View style={styles.judgeImportedRow}>
+                    <CalendarDateSvg size={11} color="rgba(255, 255, 255, 0.55)" />
+                    <ThemedText style={styles.externalJudgeImportedDate}>
+                      {language === 'es' ? 'Importada el: ' : 'Imported on: '}
+                      {new Date(tasting.importedAt).toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </ThemedText>
+                  </View>
                 )}
               </View>
             </View>
@@ -449,18 +520,18 @@ export default function TastingDetailScreen() {
 
           {/* Hero Banner with Photo and Score */}
           <View style={styles.heroCard}>
-            {tasting.photoUrl && tasting.labelPhotoUrl ? (
+            {glassPhotoUri && labelPhotoUri ? (
               <View style={styles.dualPhotoHeroRow}>
                 <Pressable
                   onPress={() =>
                     setSelectedPhotoModal({
-                      uri: tasting.photoUrl!,
+                      uri: glassPhotoUri,
                       title: `${tasting.beerName} (${language === 'es' ? 'Vaso' : 'Glass'})`,
                     })
                   }
                   style={({ pressed }) => [styles.dualPhotoWrapper, pressed && { opacity: 0.9 }]}
                 >
-                  <Image source={{ uri: tasting.photoUrl }} style={styles.dualPhotoImage} />
+                  <Image source={{ uri: glassPhotoUri }} style={styles.dualPhotoImage} />
                   <View style={styles.zoomHintBadge}>
                     <MagnifierSvg size={13} />
                   </View>
@@ -468,44 +539,44 @@ export default function TastingDetailScreen() {
                 <Pressable
                   onPress={() =>
                     setSelectedPhotoModal({
-                      uri: tasting.labelPhotoUrl!,
+                      uri: labelPhotoUri,
                       title: `${tasting.beerName} (${language === 'es' ? 'Etiqueta' : 'Label'})`,
                     })
                   }
                   style={({ pressed }) => [styles.dualPhotoWrapper, pressed && { opacity: 0.9 }]}
                 >
-                  <Image source={{ uri: tasting.labelPhotoUrl }} style={styles.dualPhotoImage} />
+                  <Image source={{ uri: labelPhotoUri }} style={styles.dualPhotoImage} />
                   <View style={styles.zoomHintBadge}>
                     <MagnifierSvg size={13} />
                   </View>
                 </Pressable>
               </View>
-            ) : tasting.photoUrl ? (
+            ) : glassPhotoUri ? (
               <Pressable
                 onPress={() =>
                   setSelectedPhotoModal({
-                    uri: tasting.photoUrl!,
+                    uri: glassPhotoUri,
                     title: `${tasting.beerName} (${language === 'es' ? 'Vaso' : 'Glass'})`,
                   })
                 }
                 style={({ pressed }) => [styles.singlePhotoHeroWrapper, pressed && { opacity: 0.9 }]}
               >
-                <Image source={{ uri: tasting.photoUrl }} style={styles.singlePhotoImage} />
+                <Image source={{ uri: glassPhotoUri }} style={styles.singlePhotoImage} />
                 <View style={styles.zoomHintBadge}>
                   <MagnifierSvg size={13} />
                 </View>
               </Pressable>
-            ) : tasting.labelPhotoUrl ? (
+            ) : labelPhotoUri ? (
               <Pressable
                 onPress={() =>
                   setSelectedPhotoModal({
-                    uri: tasting.labelPhotoUrl!,
+                    uri: labelPhotoUri,
                     title: `${tasting.beerName} (${language === 'es' ? 'Etiqueta' : 'Label'})`,
                   })
                 }
                 style={({ pressed }) => [styles.singlePhotoHeroWrapper, pressed && { opacity: 0.9 }]}
               >
-                <Image source={{ uri: tasting.labelPhotoUrl }} style={styles.singlePhotoImage} />
+                <Image source={{ uri: labelPhotoUri }} style={styles.singlePhotoImage} />
                 <View style={styles.zoomHintBadge}>
                   <MagnifierSvg size={13} />
                 </View>
@@ -1684,23 +1755,37 @@ const styles = StyleSheet.create({
 
   // Read-only & External Judge styles
   readOnlyBadge: {
-    backgroundColor: 'rgba(242, 184, 36, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(242, 184, 36, 0.18)',
     paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(242, 184, 36, 0.4)',
+    borderColor: 'rgba(242, 184, 36, 0.35)',
   },
   readOnlyBadgeText: {
     fontSize: 9.5,
     fontFamily: Fonts.spaceGroteskBold,
     color: '#F2B824',
   },
+  judgeRankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  judgeImportedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
+  },
   externalJudgeImportedDate: {
     fontSize: 10,
     fontFamily: Fonts.inter,
     color: 'rgba(255, 255, 255, 0.55)',
-    marginTop: 2,
   },
 
   // Judge Profile Prompt Modal

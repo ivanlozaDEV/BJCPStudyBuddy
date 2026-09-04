@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Linking, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
@@ -9,11 +9,17 @@ import { useTranslation } from '@/context/language-context';
 export function useIncomingFileHandler() {
   const { language } = useTranslation();
   const { saveTasting, reloadTastings } = useTastings();
+  const isProcessingRef = useRef(false);
+  const lastProcessedUrlRef = useRef<string | null>(null);
 
   const handleUrl = async (url: string | null) => {
     if (!url) return;
+    if (isProcessingRef.current) return;
+    if (lastProcessedUrlRef.current === url) return;
 
     try {
+      isProcessingRef.current = true;
+      lastProcessedUrlRef.current = url;
       const decodedUrl = decodeURIComponent(url);
 
       // 1. Manejo de archivo de ficha individual (.bjcptasting)
@@ -30,50 +36,84 @@ export function useIncomingFileHandler() {
         const parsed = await parseSharedTasting(content);
         if (parsed) {
           Alert.alert(
-            language === 'es' ? '📥 Ficha de Cata Recibida' : '📥 Scoresheet Received',
+            language === 'es' ? 'Ficha de Cata Recibida' : 'Scoresheet Received',
             language === 'es'
-              ? `Has recibido la evaluación de ${parsed.judge.fullName} (${parsed.judge.bjcpRank}) para "${parsed.tasting.beerName}" (${parsed.tasting.totalScore}/50 pts). ¿Deseas agregarla a tus catas?`
-              : `Received evaluation by ${parsed.judge.fullName} (${parsed.judge.bjcpRank}) for "${parsed.tasting.beerName}" (${parsed.tasting.totalScore}/50 pts). Add to your tastings?`,
+              ? `Has recibido la evaluación de ${parsed.judge.fullName} (${parsed.judge.bjcpRank}) para "${parsed.tasting.beerName}" (${parsed.tasting.totalScore}/50 pts). ¿Deseas agregarla a tus catas compartidas?`
+              : `Received evaluation by ${parsed.judge.fullName} (${parsed.judge.bjcpRank}) for "${parsed.tasting.beerName}" (${parsed.tasting.totalScore}/50 pts). Add to your shared tastings?`,
             [
-              { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
+              {
+                text: language === 'es' ? 'Cancelar' : 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  isProcessingRef.current = false;
+                },
+              },
               {
                 text: language === 'es' ? 'Importar y Ver' : 'Import and View',
                 onPress: async () => {
-                  const saved = await saveTasting(parsed.tasting);
-                  await reloadTastings();
-                  // Ensure base route is /tastings so back navigation always works safely
-                  router.replace('/tastings' as any);
-                  setTimeout(() => {
-                    router.push({
-                      pathname: '/tasting-detail' as any,
-                      params: { id: saved.id },
-                    });
-                  }, 100);
+                  try {
+                    const saved = await saveTasting(parsed.tasting);
+                    await reloadTastings();
+                    // Ensure base route is /tastings so back navigation always works safely
+                    router.replace('/tastings' as any);
+                    setTimeout(() => {
+                      router.push({
+                        pathname: '/tasting-detail' as any,
+                        params: { id: saved.id },
+                      });
+                    }, 100);
+                  } finally {
+                    isProcessingRef.current = false;
+                  }
                 },
               },
-            ]
+            ],
+            {
+              onDismiss: () => {
+                isProcessingRef.current = false;
+              },
+            }
           );
+        } else {
+          isProcessingRef.current = false;
         }
       }
 
       // 2. Manejo de archivo de respaldo completo (.brewstudy)
       else if (decodedUrl.endsWith('.brewstudy') || decodedUrl.includes('.brewstudy')) {
         Alert.alert(
-          language === 'es' ? '📥 Copia de Seguridad BrewStudy' : '📥 BrewStudy Backup',
+          language === 'es' ? 'Copia de Seguridad BrewStudy' : 'BrewStudy Backup',
           language === 'es'
             ? 'Para restaurar esta copia de seguridad completa, ve a Ajustes > Importar Copia de Seguridad.'
             : 'To restore this full backup archive, go to Settings > Import Backup File.',
           [
             {
               text: language === 'es' ? 'Ir a Ajustes' : 'Go to Settings',
-              onPress: () => router.push('/settings' as any),
+              onPress: () => {
+                isProcessingRef.current = false;
+                router.push('/settings' as any);
+              },
             },
-            { text: 'OK', style: 'cancel' },
-          ]
+            {
+              text: 'OK',
+              style: 'cancel',
+              onPress: () => {
+                isProcessingRef.current = false;
+              },
+            },
+          ],
+          {
+            onDismiss: () => {
+              isProcessingRef.current = false;
+            },
+          }
         );
+      } else {
+        isProcessingRef.current = false;
       }
     } catch (e) {
       console.warn('Error handling incoming file URL:', e);
+      isProcessingRef.current = false;
     }
   };
 

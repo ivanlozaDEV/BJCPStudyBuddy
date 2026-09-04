@@ -213,7 +213,9 @@ export async function parseSharedTasting(fileContent: string): Promise<{
     }
 
     const item = { ...parsed.tasting };
-    const id = `tasting_shared_${Date.now()}`;
+    const originalId = parsed.tasting.id || `${parsed.tasting.styleId || 'tasting'}_${parsed.tasting.beerName || 'beer'}_${parsed.exportedAt || Date.now()}`;
+    const cleanId = originalId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const id = cleanId.startsWith('shared_') ? cleanId : `shared_${cleanId}`;
 
     // Restaurar foto de vaso
     if (item.photoBase64) {
@@ -243,6 +245,7 @@ export async function parseSharedTasting(fileContent: string): Promise<{
       item.judgeAvatarUrl = restoredJudgeAvatar;
     }
     item.isShared = true;
+    item.synced = false;
     item.importedAt = new Date().toISOString();
 
     return {

@@ -38,6 +38,7 @@ import {
   RadioGroup,
   CategoryScoreSlider,
 } from '@/components/attribute-scale';
+import { savePermanentPhoto, resolvePhotoUri } from '@/utils/photo-storage';
 import { BottomTabInset, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
 import Svg, { Path, Rect, Circle, Line } from 'react-native-svg';
 
@@ -189,8 +190,8 @@ export default function JudgeSimulatorScreen() {
         setBeerName(existing.beerName);
         setBrewery(existing.brewery);
         setVintageOrBatch(existing.vintageOrBatch || '');
-        setPhotoUri(existing.photoUrl);
-        setLabelPhotoUri(existing.labelPhotoUrl);
+        setPhotoUri(resolvePhotoUri(existing.photoUrl));
+        setLabelPhotoUri(resolvePhotoUri(existing.labelPhotoUrl));
         setScoresheet(existing.scoresheet);
         if (existing.structuredAttributes) {
           setStructuredAttributes(existing.structuredAttributes);
@@ -232,10 +233,14 @@ export default function JudgeSimulatorScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
+        const permanentUri = await savePermanentPhoto(
+          result.assets[0].uri,
+          target === 'glass' ? 'beer_glass' : 'beer_label'
+        );
         if (target === 'glass') {
-          setPhotoUri(result.assets[0].uri);
+          setPhotoUri(permanentUri);
         } else {
-          setLabelPhotoUri(result.assets[0].uri);
+          setLabelPhotoUri(permanentUri);
         }
       }
     } catch {
@@ -267,10 +272,14 @@ export default function JudgeSimulatorScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
+        const permanentUri = await savePermanentPhoto(
+          result.assets[0].uri,
+          target === 'glass' ? 'beer_glass' : 'beer_label'
+        );
         if (target === 'glass') {
-          setPhotoUri(result.assets[0].uri);
+          setPhotoUri(permanentUri);
         } else {
-          setLabelPhotoUri(result.assets[0].uri);
+          setLabelPhotoUri(permanentUri);
         }
       }
     } catch {
