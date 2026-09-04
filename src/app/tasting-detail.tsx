@@ -338,6 +338,19 @@ export default function TastingDetailScreen() {
   };
 
   const handleShare = () => {
+    // Si la cata es de otro juez (recibida/compartida), preservar SIEMPRE la firma y perfil del autor original
+    if (isExternalJudge) {
+      const originalJudge: any = {
+        id: tasting.userId || 'external_judge',
+        fullName: tasting.judgeName || 'Juez BJCP',
+        bjcpRank: tasting.judgeRank || 'Apprentice',
+        bjcpId: tasting.judgeId,
+        avatarUrl: judgeAvatarUri,
+      };
+      openShareChoiceModal(originalJudge);
+      return;
+    }
+
     const isUnnamed =
       !profile?.fullName ||
       profile.fullName === 'Juez en Formación' ||
@@ -481,12 +494,12 @@ export default function TastingDetailScreen() {
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <ThemedText style={styles.externalJudgeLabel}>
-                    {language === 'es' ? 'FICHA RECIBIDA • JUEZ EVALUADOR' : 'RECEIVED SCORESHEET • EVALUATOR'}
+                <View style={styles.externalJudgeTopRow}>
+                  <ThemedText style={styles.externalJudgeLabel} numberOfLines={1}>
+                    {language === 'es' ? 'FICHA RECIBIDA' : 'RECEIVED SCORESHEET'}
                   </ThemedText>
                   <View style={styles.readOnlyBadge}>
-                    <LockBadgeSvg size={10} color="#F2B824" />
+                    <LockBadgeSvg size={9.5} color="#F2B824" />
                     <ThemedText style={styles.readOnlyBadgeText}>
                       {language === 'es' ? 'Solo Lectura' : 'Read-Only'}
                     </ThemedText>
@@ -1226,10 +1239,12 @@ const styles = StyleSheet.create({
     color: '#0A0C10',
   },
   externalJudgeLabel: {
+    flex: 1,
     fontSize: 9,
     fontFamily: Fonts.manropeBold,
     color: '#F2B824',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
+    marginRight: 4,
   },
   externalJudgeName: {
     fontSize: 15,
@@ -1754,19 +1769,27 @@ const styles = StyleSheet.create({
   },
 
   // Read-only & External Judge styles
-  readOnlyBadge: {
+  externalJudgeTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 2,
+  },
+  readOnlyBadge: {
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
     backgroundColor: 'rgba(242, 184, 36, 0.18)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 6.5,
+    paddingVertical: 2.5,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(242, 184, 36, 0.35)',
   },
   readOnlyBadgeText: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontFamily: Fonts.spaceGroteskBold,
     color: '#F2B824',
   },

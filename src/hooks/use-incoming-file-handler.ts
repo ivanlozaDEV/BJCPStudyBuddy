@@ -35,6 +35,9 @@ export function useIncomingFileHandler() {
 
         const parsed = await parseSharedTasting(content);
         if (parsed) {
+          // Reemplazar inmediatamente la ruta base a /tastings para que la pantalla detrás del Alert sea "Mis Catas"
+          router.replace('/tastings' as any);
+
           Alert.alert(
             language === 'es' ? 'Ficha de Cata Recibida' : 'Scoresheet Received',
             language === 'es'
@@ -54,14 +57,10 @@ export function useIncomingFileHandler() {
                   try {
                     const saved = await saveTasting(parsed.tasting);
                     await reloadTastings();
-                    // Ensure base route is /tastings so back navigation always works safely
-                    router.replace('/tastings' as any);
-                    setTimeout(() => {
-                      router.push({
-                        pathname: '/tasting-detail' as any,
-                        params: { id: saved.id },
-                      });
-                    }, 100);
+                    router.push({
+                      pathname: '/tasting-detail' as any,
+                      params: { id: saved.id },
+                    });
                   } finally {
                     isProcessingRef.current = false;
                   }
