@@ -23,6 +23,7 @@ import { useTastings } from '@/context/tastings-context';
 import { TastingNote, getQualityTier } from '@/types/tasting';
 import { fuzzyMatch } from '@/utils/fuzzy';
 import { checkAndPromptBackupReminder } from '@/hooks/use-backup-reminder';
+import { LocationPinSvg } from '@/components/location-svgs';
 
 function FilterIconSvg({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }) {
   return (
@@ -186,7 +187,7 @@ export default function TastingsScreen() {
       if (quality.tier !== selectedFilter) return false;
     }
 
-    // 2. Búsqueda por texto
+    // 2. Búsqueda por texto (Cerveza, Cervecería, Estilo, Lugar o Juez)
     return fuzzyMatch(searchQuery, [
       tasting.beerName,
       tasting.brewery,
@@ -194,6 +195,9 @@ export default function TastingsScreen() {
       tasting.styleName,
       tasting.vintageOrBatch || '',
       tasting.judgeName || '',
+      tasting.locationName || '',
+      tasting.locationCoords?.city || '',
+      tasting.locationCoords?.country || '',
     ]);
   });
 
@@ -548,6 +552,16 @@ function TastingCard({
           </View>
         ) : null}
 
+        {/* Location Tag */}
+        {tasting.locationName ? (
+          <View style={styles.cardLocationBadge}>
+            <LocationPinSvg size={10} color="#F2B824" />
+            <ThemedText style={styles.cardLocationText} numberOfLines={1}>
+              {tasting.locationName}
+            </ThemedText>
+          </View>
+        ) : null}
+
         <ThemedText style={styles.cardDate}>{formattedDate}</ThemedText>
       </View>
 
@@ -834,6 +848,23 @@ const styles = StyleSheet.create({
     color: '#F2B824',
     fontSize: 10,
     fontFamily: Fonts.manropeBold,
+  },
+  cardLocationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  cardLocationText: {
+    color: '#F2B824',
+    fontSize: 10,
+    fontFamily: Fonts.inter,
+    maxWidth: 160,
   },
   cardDate: {
     color: 'rgba(255, 255, 255, 0.45)',

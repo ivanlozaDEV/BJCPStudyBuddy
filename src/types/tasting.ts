@@ -49,6 +49,13 @@ export interface StructuredAttributes {
   generalRelativeStrength?: string;    // 'top3' | 'cut' | 'middle' | 'tail'
 }
 
+export interface LocationCoordinates {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  country?: string;
+}
+
 export interface TastingNote {
   id: string;
   userId?: string;
@@ -57,6 +64,8 @@ export interface TastingNote {
   beerName: string;
   brewery: string;
   vintageOrBatch?: string;
+  locationName?: string;        // Bar, Taproom o Lugar de cata
+  locationCoords?: LocationCoordinates; // Coordenadas GPS
   photoUrl?: string;        // Beer in glass photo
   labelPhotoUrl?: string;   // Beer label / bottle photo
   scoresheet: TastingScoresheet;

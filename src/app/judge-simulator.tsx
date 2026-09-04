@@ -29,6 +29,7 @@ import { shareTastingFile, shareTastingText } from '@/services/tasting-share-ser
 import {
   TastingScoresheet,
   StructuredAttributes,
+  LocationCoordinates,
   calculateTotalScore,
   getQualityTier,
 } from '@/types/tasting';
@@ -39,6 +40,8 @@ import {
   CategoryScoreSlider,
 } from '@/components/attribute-scale';
 import { savePermanentPhoto, resolvePhotoUri } from '@/utils/photo-storage';
+import { LocationPinSvg, GpsTargetSvg, CheckmarkGpsSvg } from '@/components/location-svgs';
+import { getCurrentDeviceLocation } from '@/services/location-service';
 import { BottomTabInset, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
 import Svg, { Path, Rect, Circle, Line } from 'react-native-svg';
 
@@ -125,6 +128,9 @@ export default function JudgeSimulatorScreen() {
   const [vintageOrBatch, setVintageOrBatch] = useState('');
   const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
   const [labelPhotoUri, setLabelPhotoUri] = useState<string | undefined>(undefined);
+  const [locationName, setLocationName] = useState('');
+  const [locationCoords, setLocationCoords] = useState<LocationCoordinates | undefined>(undefined);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   // 50-Points Scoresheet State
   const [scoresheet, setScoresheet] = useState<TastingScoresheet>({
@@ -190,6 +196,8 @@ export default function JudgeSimulatorScreen() {
         setBeerName(existing.beerName);
         setBrewery(existing.brewery);
         setVintageOrBatch(existing.vintageOrBatch || '');
+        setLocationName(existing.locationName || '');
+        setLocationCoords(existing.locationCoords);
         setPhotoUri(resolvePhotoUri(existing.photoUrl));
         setLabelPhotoUri(resolvePhotoUri(existing.labelPhotoUrl));
         setScoresheet(existing.scoresheet);
@@ -208,6 +216,32 @@ export default function JudgeSimulatorScreen() {
       setSelectedStyle(defaultSt);
     }
   }, [params.editId, params.styleId]);
+
+  const handleGetLocation = async () => {
+    setIsFetchingLocation(true);
+    try {
+      const res = await getCurrentDeviceLocation(language);
+      if (res.success && res.coords) {
+        setLocationCoords(res.coords);
+        if (!locationName.trim() && res.coords.city) {
+          const placeHint = res.coords.country ? `${res.coords.city}, ${res.coords.country}` : res.coords.city;
+          setLocationName(placeHint);
+        }
+      } else {
+        Alert.alert(
+          language === 'es' ? 'Ubicación GPS' : 'GPS Location',
+          res.error || (language === 'es' ? 'No se pudo obtener la ubicación GPS.' : 'Could not get GPS location.')
+        );
+      }
+    } catch (e: any) {
+      Alert.alert(
+        language === 'es' ? 'Error' : 'Error',
+        e?.message || (language === 'es' ? 'Error al obtener ubicación.' : 'Error getting location.')
+      );
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
 
   const totalScore = calculateTotalScore(scoresheet);
   const quality = getQualityTier(totalScore);
@@ -422,6 +456,8 @@ export default function JudgeSimulatorScreen() {
         vintageOrBatch: vintageOrBatch.trim(),
         photoUrl: photoUri,
         labelPhotoUrl: labelPhotoUri,
+        locationName: locationName.trim() || undefined,
+        locationCoords: locationCoords || undefined,
         scoresheet,
         structuredAttributes,
         descriptors: [],
@@ -693,6 +729,71 @@ export default function JudgeSimulatorScreen() {
                   onChangeText={setVintageOrBatch}
                 />
               </View>
+            </View>
+          </View>
+
+          {/* Section: Lugar de la Cata & GPS */}
+          <View style={styles.sectionCard}>
+            <View style={styles.categoryTitleRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <LocationPinSvg size={18} color="#F2B824" />
+                <ThemedText style={styles.sectionHeaderTitle}>
+                  {language === 'es' ? 'LUGAR DE LA CATA (OPCIONAL)' : 'TASTING LOCATION (OPTIONAL)'}
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={styles.fieldLabel}>
+                {language === 'es' ? 'Bar, Taproom o Establecimiento' : 'Bar, Taproom or Place'}
+              </ThemedText>
+              <TextInput
+                style={styles.textInput}
+                placeholder={language === 'es' ? 'Ej. Cervecería Hércules, El Depósito...' : 'e.g. Stone Brewing Taproom, Home...'}
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                value={locationName}
+                onChangeText={setLocationName}
+              />
+            </View>
+
+            {/* GPS Location Button / Badge */}
+            <View style={styles.gpsRow}>
+              {locationCoords ? (
+                <View style={styles.gpsSavedContainer}>
+                  <View style={styles.gpsSavedBadge}>
+                    <CheckmarkGpsSvg size={15} color="#52B788" />
+                    <ThemedText style={styles.gpsSavedText}>
+                      {language === 'es' ? 'GPS Guardado' : 'GPS Saved'}
+                      {locationCoords.city ? ` • ${locationCoords.city}` : ` (${locationCoords.latitude.toFixed(3)}, ${locationCoords.longitude.toFixed(3)})`}
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    onPress={() => setLocationCoords(undefined)}
+                    style={({ pressed }) => [styles.gpsClearBtn, pressed && { opacity: 0.7 }]}
+                  >
+                    <ThemedText style={styles.gpsClearText}>
+                      {language === 'es' ? 'Quitar' : 'Remove'}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={handleGetLocation}
+                  disabled={isFetchingLocation}
+                  style={({ pressed }) => [
+                    styles.gpsCaptureBtn,
+                    pressed && { opacity: 0.8 },
+                    isFetchingLocation && { opacity: 0.6 },
+                  ]}
+                >
+                  <GpsTargetSvg size={16} color="#52B788" />
+                  <ThemedText style={styles.gpsCaptureBtnText}>
+                    {isFetchingLocation
+                      ? (language === 'es' ? 'Obteniendo GPS...' : 'Getting GPS...')
+                      : (language === 'es' ? 'Usar Ubicación GPS Actual' : 'Use Current GPS Location')}
+                  </ThemedText>
+                </Pressable>
+              )}
             </View>
           </View>
 
@@ -1553,5 +1654,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: Fonts.inter,
     marginTop: 2,
+  },
+  gpsRow: {
+    marginTop: Spacing.two,
+  },
+  gpsSavedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(82, 183, 136, 0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(82, 183, 136, 0.35)',
+  },
+  gpsSavedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  gpsSavedText: {
+    color: '#52B788',
+    fontSize: 13,
+    fontFamily: Fonts.spaceGroteskBold,
+  },
+  gpsClearBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  gpsClearText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    fontFamily: Fonts.inter,
+  },
+  gpsCaptureBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(82, 183, 136, 0.15)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(82, 183, 136, 0.35)',
+  },
+  gpsCaptureBtnText: {
+    color: '#52B788',
+    fontSize: 13,
+    fontFamily: Fonts.spaceGroteskBold,
   },
 });

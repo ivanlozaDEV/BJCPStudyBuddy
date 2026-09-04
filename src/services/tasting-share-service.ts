@@ -87,6 +87,7 @@ export function generateTastingTextSummary(tasting: TastingNote, judge?: UserPro
 • Impresión General: ${tasting.scoresheet.overallScore || 0} / 10 pts
 ${tasting.descriptors && tasting.descriptors.length > 0 ? `\n🏷️ *Descriptores:* ${tasting.descriptors.join(', ')}` : ''}
 ${tasting.feedbackNotes ? `\n💡 *Consejos al Cervecero:* ${tasting.feedbackNotes}` : ''}
+${tasting.locationName ? `\n📍 *Lugar:* ${tasting.locationName}` : ''}
 👤 *Juez Evaluador:* ${judgeName} ${judgeRank}
 ━━━━━━━━━━━━━━━━━━━━━━
 _Evaluado con BrewStudy PRO 🍻_`;
@@ -106,6 +107,7 @@ _Evaluado con BrewStudy PRO 🍻_`;
 • Overall Impression: ${tasting.scoresheet.overallScore || 0} / 10 pts
 ${tasting.descriptors && tasting.descriptors.length > 0 ? `\n🏷️ *Descriptors:* ${tasting.descriptors.join(', ')}` : ''}
 ${tasting.feedbackNotes ? `\n💡 *Feedback for Brewer:* ${tasting.feedbackNotes}` : ''}
+${tasting.locationName ? `\n📍 *Location:* ${tasting.locationName}` : ''}
 👤 *Evaluator Judge:* ${judgeName} ${judgeRank}
 ━━━━━━━━━━━━━━━━━━━━━━
 _Evaluated with BrewStudy PRO 🍻_`;

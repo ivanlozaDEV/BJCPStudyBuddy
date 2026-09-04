@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -27,6 +28,7 @@ import { ScoreDial } from '@/components/score-dial';
 import { BottomTabInset, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
 import { shareTastingFile, shareTastingText } from '@/services/tasting-share-service';
 import { resolvePhotoUri } from '@/utils/photo-storage';
+import { LocationPinSvg, ExternalMapSvg } from '@/components/location-svgs';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 
 function LockBadgeSvg({ size = 10, color = '#F2B824' }: { size?: number; color?: string }) {
@@ -624,6 +626,35 @@ export default function TastingDetailScreen() {
                 </Pressable>
                 <ThemedText style={styles.dateText}>{formattedDate}</ThemedText>
               </View>
+
+              {/* Location Badge with Map link */}
+              {(tasting.locationName || tasting.locationCoords) ? (
+                <Pressable
+                  onPress={() => {
+                    if (tasting.locationCoords) {
+                      const url = Platform.select({
+                        ios: `maps:0,0?q=${tasting.locationCoords.latitude},${tasting.locationCoords.longitude}`,
+                        default: `https://www.google.com/maps/search/?api=1&query=${tasting.locationCoords.latitude},${tasting.locationCoords.longitude}`,
+                      });
+                      if (url) Linking.openURL(url);
+                    } else if (tasting.locationName) {
+                      const query = encodeURIComponent(tasting.locationName);
+                      const url = Platform.select({
+                        ios: `maps:0,0?q=${query}`,
+                        default: `https://www.google.com/maps/search/?api=1&query=${query}`,
+                      });
+                      if (url) Linking.openURL(url);
+                    }
+                  }}
+                  style={({ pressed }) => [styles.locationDetailRow, pressed && { opacity: 0.75 }]}
+                >
+                  <LocationPinSvg size={14} color="#F2B824" />
+                  <ThemedText style={styles.locationDetailText} numberOfLines={1}>
+                    {tasting.locationName || (language === 'es' ? 'Ver Ubicación GPS' : 'View GPS Location')}
+                  </ThemedText>
+                  <ExternalMapSvg size={12} color="#3A7D9D" />
+                </Pressable>
+              ) : null}
             </View>
 
             {/* Score Dial & Quality Tier Banner */}
@@ -1325,6 +1356,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 4,
+  },
+  locationDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  locationDetailText: {
+    color: '#C7D0D9',
+    fontSize: 12,
+    fontFamily: Fonts.inter,
+    maxWidth: 240,
   },
   stylePill: {
     flexDirection: 'row',

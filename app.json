@@ -15,8 +15,9 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.ivanloza.bjcpstudybuddy",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Permite a BrewStudy acceder a tu ubicación para registrar el bar o lugar donde realizas tus catas de cerveza.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDocumentTypes": [
           {
@@ -65,7 +66,8 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.ivanloza.bjcpstudybuddy",
-      "versionCode": 8,
+      "versionCode": 9,
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -100,6 +102,12 @@
         {
           "photosPermission": "Permite a BrewStudy acceder a tus fotos para adjuntar imágenes a tus fichas de cata.",
           "cameraPermission": "Permite a BrewStudy usar la cámara para fotografiar las cervezas que estás evaluando."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite a BrewStudy acceder a tu ubicación para registrar el bar o lugar donde realizas tus catas de cerveza."
         }
       ],
       "expo-sharing"
