@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { UserProfile } from '@/types/tasting';
+import { resolvePhotoUri } from '@/utils/photo-storage';
 
 const LOCAL_USER_KEY = '@bjcp_user_profile';
 const LOCAL_GUEST_ID_KEY = '@bjcp_guest_user_id';
@@ -16,6 +17,7 @@ interface AuthContextData {
   signUp: (email: string, password: string, fullName?: string, bjcpRank?: string) => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  reloadProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -33,41 +35,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [guestId, setGuestId] = useState<string>('judge_local');
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function initProfile() {
-      try {
-        let currentGuestId = await AsyncStorage.getItem(LOCAL_GUEST_ID_KEY);
-        if (!currentGuestId) {
+  const loadProfileFromStorage = async (explicitGuestId?: string) => {
+    try {
+      let currentGuestId = explicitGuestId || guestId;
+      if (!explicitGuestId) {
+        const storedGuestId = await AsyncStorage.getItem(LOCAL_GUEST_ID_KEY);
+        if (storedGuestId) {
+          currentGuestId = storedGuestId;
+        } else {
           currentGuestId = Crypto.randomUUID();
           await AsyncStorage.setItem(LOCAL_GUEST_ID_KEY, currentGuestId);
         }
         setGuestId(currentGuestId);
+      }
 
-        const cachedProfile = await AsyncStorage.getItem(LOCAL_USER_KEY);
-        if (cachedProfile) {
-          try {
-            const parsed = JSON.parse(cachedProfile);
-            setProfile({
-              ...defaultProfile,
-              ...parsed,
-              fullName: parsed.fullName || defaultProfile.fullName,
-              bjcpRank: parsed.bjcpRank || defaultProfile.bjcpRank,
-            });
-          } catch {
-            setProfile({ ...defaultProfile, id: currentGuestId });
-          }
-        } else {
+      const cachedProfile = await AsyncStorage.getItem(LOCAL_USER_KEY);
+      if (cachedProfile) {
+        try {
+          const parsed = JSON.parse(cachedProfile);
+          setProfile({
+            ...defaultProfile,
+            ...parsed,
+            fullName: parsed.fullName || defaultProfile.fullName,
+            bjcpRank: parsed.bjcpRank || defaultProfile.bjcpRank,
+            avatarUrl: parsed.avatarUrl ? resolvePhotoUri(parsed.avatarUrl) : undefined,
+          });
+        } catch {
           setProfile({ ...defaultProfile, id: currentGuestId });
         }
-      } catch (e) {
-        console.warn('Error during local profile initialization:', e);
+      } else {
+        setProfile({ ...defaultProfile, id: currentGuestId });
+      }
+    } catch (e) {
+      console.warn('Error during local profile initialization/reload:', e);
+    }
+  };
+
+  useEffect(() => {
+    async function init() {
+      try {
+        await loadProfileFromStorage();
       } finally {
         setIsLoading(false);
       }
     }
-
-    initProfile();
+    init();
   }, []);
+
+  const reloadProfile = async () => {
+    await loadProfileFromStorage();
+  };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
@@ -100,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         resetPassword,
         updateProfile,
+        reloadProfile,
         signOut,
       }}
     >
@@ -115,3 +133,4 @@ export function useAuth() {
   }
   return context;
 }
+

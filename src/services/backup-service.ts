@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Share, Platform, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { resolvePhotoUri } from '@/utils/photo-storage';
+
+export const LAST_BACKUP_TIMESTAMP_KEY = '@bjcp_last_backup_timestamp';
+export const TASTINGS_COUNT_AT_LAST_BACKUP_KEY = '@bjcp_tastings_count_at_last_backup';
 
 export interface BrewStudyBackupPayload {
   version: number;
@@ -8,11 +12,14 @@ export interface BrewStudyBackupPayload {
   exportedAt: string;
   tastings: any[];
   profile: {
+    id?: string;
     fullName: string;
     bjcpRank: string;
     bjcpId?: string;
+    experienceLevel?: string;
     avatarUrl?: string;
     avatarBase64?: string;
+    createdAt?: string;
   };
   quizSeenIds: string[];
   failedQuestionsPool: any[];
@@ -24,7 +31,17 @@ export interface BrewStudyBackupPayload {
   answeredStyles?: string[];
   answeredGlossary?: string[];
   answeredOffFlavors?: string[];
-  fcScore?: number;
+  fcScore?: { correct: number; total: number } | number;
+  fcStudyMode?: string;
+  selectedCategory?: string;
+  sessionStylesIds?: string[];
+  currentStyleId?: string;
+  sessionGlossaryIds?: string[];
+  currentGlossaryId?: string;
+  sessionOffFlavorsIds?: string[];
+  currentOffFlavorId?: string;
+  quizStreak?: number;
+  quizMaxStreak?: number;
   streakCount?: number;
   lastStudyDate?: string;
   language?: string;
@@ -71,12 +88,14 @@ function getSharingModule(): any {
  * Convierte una URI de archivo local a Base64 de forma segura
  */
 async function fileUriToBase64(uri?: string): Promise<string | undefined> {
-  if (!uri || !uri.startsWith('file://')) return undefined;
+  if (!uri) return undefined;
+  const resolved = resolvePhotoUri(uri);
+  if (!resolved || !resolved.startsWith('file://')) return undefined;
   try {
-    const info = await FileSystem.getInfoAsync(uri);
+    const info = await FileSystem.getInfoAsync(resolved);
     if (!info.exists) return undefined;
 
-    const base64 = await FileSystem.readAsStringAsync(uri, {
+    const base64 = await FileSystem.readAsStringAsync(resolved, {
       encoding: FileSystem.EncodingType?.Base64 || 'base64',
     });
     return base64;
@@ -131,6 +150,16 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
     answeredGlossaryRaw,
     answeredOffFlavorsRaw,
     fcScoreRaw,
+    fcStudyModeRaw,
+    selectedCategoryRaw,
+    sessionStylesIdsRaw,
+    currentStyleIdRaw,
+    sessionGlossaryIdsRaw,
+    currentGlossaryIdRaw,
+    sessionOffFlavorsIdsRaw,
+    currentOffFlavorIdRaw,
+    quizStreakRaw,
+    quizMaxStreakRaw,
     streakRaw,
     lastDateRaw,
     langRaw,
@@ -148,6 +177,16 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
     AsyncStorage.getItem('@BJCPStudyBuddy:answeredGlossary'),
     AsyncStorage.getItem('@BJCPStudyBuddy:answeredOffFlavors'),
     AsyncStorage.getItem('@BJCPStudyBuddy:fcScore'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:fcStudyMode'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:selectedCategory'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:sessionStylesIds'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:currentStyleId'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:sessionGlossaryIds'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:currentGlossaryId'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:sessionOffFlavorsIds'),
+    AsyncStorage.getItem('@BJCPStudyBuddy:currentOffFlavorId'),
+    AsyncStorage.getItem('@bjcp_quiz_streak'),
+    AsyncStorage.getItem('@bjcp_quiz_max_streak'),
     AsyncStorage.getItem('@BJCPStudyBuddy:streakCount'),
     AsyncStorage.getItem('@BJCPStudyBuddy:lastStudyDate'),
     AsyncStorage.getItem('@BJCPStudyBuddy:language'),
@@ -155,7 +194,7 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
 
   let parsedTastings: any[] = tastingsRaw ? JSON.parse(tastingsRaw) : [];
 
-  // Incrustar fotos de vaso y etiqueta en Base64 dentro del archivo de respaldo
+  // Incrustar fotos de vaso, etiqueta y avatar de juez en Base64 dentro del archivo de respaldo
   const enrichedTastings = await Promise.all(
     parsedTastings.map(async (tasting) => {
       const enriched = { ...tasting };
@@ -171,6 +210,12 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
           enriched.labelPhotoBase64 = labelB64;
         }
       }
+      if (tasting.judgeAvatarUrl) {
+        const judgeB64 = await fileUriToBase64(tasting.judgeAvatarUrl);
+        if (judgeB64) {
+          enriched.judgeAvatarBase64 = judgeB64;
+        }
+      }
       return enriched;
     })
   );
@@ -183,6 +228,17 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
     const avatarB64 = await fileUriToBase64(enrichedProfile.avatarUrl);
     if (avatarB64) {
       enrichedProfile.avatarBase64 = avatarB64;
+    }
+  }
+
+  // Parse fcScore safely (can be object { correct, total } or number)
+  let parsedFcScore: any = undefined;
+  if (fcScoreRaw) {
+    try {
+      parsedFcScore = JSON.parse(fcScoreRaw);
+    } catch {
+      const num = parseInt(fcScoreRaw, 10);
+      if (!isNaN(num)) parsedFcScore = num;
     }
   }
 
@@ -202,7 +258,17 @@ export async function generateBackupPayload(): Promise<BrewStudyBackupPayload> {
     answeredStyles: answeredStylesRaw ? JSON.parse(answeredStylesRaw) : undefined,
     answeredGlossary: answeredGlossaryRaw ? JSON.parse(answeredGlossaryRaw) : undefined,
     answeredOffFlavors: answeredOffFlavorsRaw ? JSON.parse(answeredOffFlavorsRaw) : undefined,
-    fcScore: fcScoreRaw ? parseInt(fcScoreRaw, 10) : undefined,
+    fcScore: parsedFcScore,
+    fcStudyMode: fcStudyModeRaw || undefined,
+    selectedCategory: selectedCategoryRaw || undefined,
+    sessionStylesIds: sessionStylesIdsRaw ? JSON.parse(sessionStylesIdsRaw) : undefined,
+    currentStyleId: currentStyleIdRaw || undefined,
+    sessionGlossaryIds: sessionGlossaryIdsRaw ? JSON.parse(sessionGlossaryIdsRaw) : undefined,
+    currentGlossaryId: currentGlossaryIdRaw || undefined,
+    sessionOffFlavorsIds: sessionOffFlavorsIdsRaw ? JSON.parse(sessionOffFlavorsIdsRaw) : undefined,
+    currentOffFlavorId: currentOffFlavorIdRaw || undefined,
+    quizStreak: quizStreakRaw ? parseInt(quizStreakRaw, 10) : undefined,
+    quizMaxStreak: quizMaxStreakRaw ? parseInt(quizMaxStreakRaw, 10) : undefined,
     streakCount: streakRaw ? parseInt(streakRaw, 10) : 0,
     lastStudyDate: lastDateRaw || undefined,
     language: langRaw || 'es',
@@ -226,6 +292,12 @@ export async function exportBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
     await FileSystem.writeAsStringAsync(fileUri, jsonString, {
       encoding: FileSystem.EncodingType?.UTF8 || 'utf8',
     });
+
+    // Registrar fecha de respaldo y cantidad de catas respaldadas
+    await AsyncStorage.multiSet([
+      [LAST_BACKUP_TIMESTAMP_KEY, now.toISOString()],
+      [TASTINGS_COUNT_AT_LAST_BACKUP_KEY, (payload.tastings?.length || 0).toString()],
+    ]);
 
     // 1. Intentar expo-sharing si está disponible
     const Sharing = getSharingModule();
@@ -315,6 +387,8 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
             item.photoUrl = newPhotoUri;
           }
           delete item.photoBase64;
+        } else if (item.photoUrl) {
+          item.photoUrl = resolvePhotoUri(item.photoUrl);
         }
 
         if (item.labelPhotoBase64) {
@@ -323,6 +397,18 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
             item.labelPhotoUrl = newLabelUri;
           }
           delete item.labelPhotoBase64;
+        } else if (item.labelPhotoUrl) {
+          item.labelPhotoUrl = resolvePhotoUri(item.labelPhotoUrl);
+        }
+
+        if ((item as any).judgeAvatarBase64) {
+          const newJudgeAvatar = await base64ToLocalFile((item as any).judgeAvatarBase64, `${id}_judge_avatar.jpg`);
+          if (newJudgeAvatar) {
+            item.judgeAvatarUrl = newJudgeAvatar;
+          }
+          delete (item as any).judgeAvatarBase64;
+        } else if (item.judgeAvatarUrl) {
+          item.judgeAvatarUrl = resolvePhotoUri(item.judgeAvatarUrl);
         }
 
         return item;
@@ -343,9 +429,12 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
           prof.avatarUrl = newAvatarUri;
         }
         delete (prof as any).avatarBase64;
+      } else if (prof.avatarUrl) {
+        prof.avatarUrl = resolvePhotoUri(prof.avatarUrl);
       }
       storageOperations.push(['@bjcp_user_profile', JSON.stringify(prof)]);
     }
+
     if (parsed.quizSeenIds) {
       storageOperations.push(['@bjcp_quiz_seen_ids', JSON.stringify(parsed.quizSeenIds)]);
     }
@@ -377,7 +466,38 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
       storageOperations.push(['@BJCPStudyBuddy:answeredOffFlavors', JSON.stringify(parsed.answeredOffFlavors)]);
     }
     if (parsed.fcScore !== undefined) {
-      storageOperations.push(['@BJCPStudyBuddy:fcScore', parsed.fcScore.toString()]);
+      const fcScoreString = typeof parsed.fcScore === 'object' ? JSON.stringify(parsed.fcScore) : parsed.fcScore.toString();
+      storageOperations.push(['@BJCPStudyBuddy:fcScore', fcScoreString]);
+    }
+    if (parsed.fcStudyMode) {
+      storageOperations.push(['@BJCPStudyBuddy:fcStudyMode', parsed.fcStudyMode]);
+    }
+    if (parsed.selectedCategory) {
+      storageOperations.push(['@BJCPStudyBuddy:selectedCategory', parsed.selectedCategory]);
+    }
+    if (parsed.sessionStylesIds) {
+      storageOperations.push(['@BJCPStudyBuddy:sessionStylesIds', JSON.stringify(parsed.sessionStylesIds)]);
+    }
+    if (parsed.currentStyleId) {
+      storageOperations.push(['@BJCPStudyBuddy:currentStyleId', parsed.currentStyleId]);
+    }
+    if (parsed.sessionGlossaryIds) {
+      storageOperations.push(['@BJCPStudyBuddy:sessionGlossaryIds', JSON.stringify(parsed.sessionGlossaryIds)]);
+    }
+    if (parsed.currentGlossaryId) {
+      storageOperations.push(['@BJCPStudyBuddy:currentGlossaryId', parsed.currentGlossaryId]);
+    }
+    if (parsed.sessionOffFlavorsIds) {
+      storageOperations.push(['@BJCPStudyBuddy:sessionOffFlavorsIds', JSON.stringify(parsed.sessionOffFlavorsIds)]);
+    }
+    if (parsed.currentOffFlavorId) {
+      storageOperations.push(['@BJCPStudyBuddy:currentOffFlavorId', parsed.currentOffFlavorId]);
+    }
+    if (parsed.quizStreak !== undefined) {
+      storageOperations.push(['@bjcp_quiz_streak', parsed.quizStreak.toString()]);
+    }
+    if (parsed.quizMaxStreak !== undefined) {
+      storageOperations.push(['@bjcp_quiz_max_streak', parsed.quizMaxStreak.toString()]);
     }
     if (parsed.streakCount !== undefined) {
       storageOperations.push(['@BJCPStudyBuddy:streakCount', parsed.streakCount.toString()]);
@@ -388,6 +508,11 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
     if (parsed.language) {
       storageOperations.push(['@BJCPStudyBuddy:language', parsed.language]);
     }
+
+    // Registrar fecha del último respaldo/restauración
+    const nowIso = new Date().toISOString();
+    storageOperations.push([LAST_BACKUP_TIMESTAMP_KEY, nowIso]);
+    storageOperations.push([TASTINGS_COUNT_AT_LAST_BACKUP_KEY, restoredTastings.length.toString()]);
 
     await AsyncStorage.multiSet(storageOperations);
 
@@ -403,3 +528,4 @@ export async function importBackupFile(lang: 'es' | 'en' = 'es'): Promise<{ succ
     };
   }
 }
+

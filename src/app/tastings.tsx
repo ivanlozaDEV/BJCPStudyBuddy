@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FlatList,
     Image,
@@ -22,6 +22,7 @@ import { useTranslation } from '@/context/language-context';
 import { useTastings } from '@/context/tastings-context';
 import { TastingNote, getQualityTier } from '@/types/tasting';
 import { fuzzyMatch } from '@/utils/fuzzy';
+import { checkAndPromptBackupReminder } from '@/hooks/use-backup-reminder';
 
 function FilterIconSvg({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }) {
   return (
@@ -149,6 +150,19 @@ export default function TastingsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+  // Recordatorio inteligente de respaldo en la nube
+  useEffect(() => {
+    if (tastings.length >= 5) {
+      const timeout = setTimeout(() => {
+        checkAndPromptBackupReminder({
+          tastingsCount: tastings.length,
+          language,
+        });
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [tastings.length, language]);
 
   // Clasificar catas propias vs catas recibidas de otros jueces
   const isOwnTasting = (t: TastingNote) => {

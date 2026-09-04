@@ -25,7 +25,6 @@ import { useAuth } from '@/context/auth-context';
 import { usePurchases } from '@/context/purchases-context';
 import { useTastings } from '@/context/tastings-context';
 import { exportBackupFile, importBackupFile } from '@/services/backup-service';
-import { performICloudSync } from '@/services/icloud-sync-service';
 
 const BJCP_RANKS = [
   'Apprentice',
@@ -39,7 +38,7 @@ const BJCP_RANKS = [
 export default function SettingsScreen() {
   const theme = useTheme();
   const { t, language, setLanguage } = useTranslation();
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, reloadProfile } = useAuth();
   const { isPro, isTrialActive, trialDaysRemaining, isLifetimePurchased, restorePurchases } = usePurchases();
   const { reloadTastings, stats } = useTastings();
 
@@ -62,7 +61,6 @@ export default function SettingsScreen() {
   const [tempAvatar, setTempAvatar] = useState(safeProfile.avatarUrl || '');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isSyncingICloud, setIsSyncingICloud] = useState(false);
 
   const safeBack = () => {
     if (router.canGoBack()) {
@@ -176,8 +174,8 @@ export default function SettingsScreen() {
     Alert.alert(
       language === 'es' ? '📥 Importar Copia de Seguridad' : '📥 Import Backup File',
       language === 'es'
-        ? 'Al importar el archivo se restaurarán todas las catas, fotos y progreso en este dispositivo. ¿Deseas continuar?'
-        : 'Importing will restore all tastings, photos, and progress onto this device. Continue?',
+        ? 'Al importar el archivo se restaurarán tu perfil de juez, todas las catas con sus fotos y todo tu progreso de estudio. ¿Deseas continuar?'
+        : 'Importing will restore your judge profile, all tastings with photos, and all study progress. Continue?',
       [
         { text: language === 'es' ? 'Cancelar' : 'Cancel', style: 'cancel' },
         {
@@ -187,12 +185,15 @@ export default function SettingsScreen() {
               setIsImporting(true);
               const res = await importBackupFile(language);
               if (res.success) {
-                await reloadTastings();
+                await Promise.all([
+                  reloadTastings(),
+                  reloadProfile(),
+                ]);
                 Alert.alert(
                   language === 'es' ? '¡Restauración Exitosa!' : 'Restore Successful!',
                   language === 'es'
-                    ? `Se han restaurado correctamente ${res.count || 0} catas con sus fotos y todo tu progreso de estudio.`
-                    : `Successfully restored ${res.count || 0} tastings with photos and study progress.`
+                    ? `Se han restaurado correctamente tu perfil de juez, ${res.count || 0} catas con sus fotos y todo tu progreso de estudio.`
+                    : `Successfully restored your judge profile, ${res.count || 0} tastings with photos, and all study progress.`
                 );
               } else if (res.message && res.message !== 'canceled') {
                 Alert.alert(
@@ -212,34 +213,6 @@ export default function SettingsScreen() {
         },
       ]
     );
-  };
-
-  const handleManualICloudSync = async () => {
-    try {
-      setIsSyncingICloud(true);
-      const res = await performICloudSync();
-      if (res.success) {
-        await reloadTastings();
-        Alert.alert(
-          language === 'es' ? '☁️ Sincronización iCloud Exitosa' : '☁️ iCloud Sync Successful',
-          language === 'es'
-            ? `Tus catas y progreso están sincronizados con tu cuenta de Apple ID (${res.mergedCount || 0} catas al día).`
-            : `Your tastings and progress are synced with your Apple ID account (${res.mergedCount || 0} tastings up to date).`
-        );
-      } else {
-        Alert.alert(
-          language === 'es' ? 'Sincronización iCloud' : 'iCloud Sync',
-          res.message || (language === 'es' ? 'No se pudo sincronizar.' : 'Sync failed.')
-        );
-      }
-    } catch (e: any) {
-      Alert.alert(
-        language === 'es' ? 'Error' : 'Error',
-        e?.message || (language === 'es' ? 'Error al sincronizar con iCloud.' : 'iCloud sync error.')
-      );
-    } finally {
-      setIsSyncingICloud(false);
-    }
   };
 
   const handleResetProgress = () => {
@@ -412,10 +385,10 @@ export default function SettingsScreen() {
             </View>
           </ThemedView>
 
-          {/* 2. Respaldo y Sincronización iCloud */}
+          {/* 2. Respaldo y Almacenamiento en la Nube */}
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>
-              {language === 'es' ? 'SINCRONIZACIÓN Y RESPALDO' : 'SYNC & BACKUP'}
+              {language === 'es' ? 'COPIA DE SEGURIDAD Y NUBE' : 'BACKUP & CLOUD STORAGE'}
             </ThemedText>
           </View>
 
@@ -424,12 +397,12 @@ export default function SettingsScreen() {
               <ThemedText style={styles.privacyIcon}>☁️</ThemedText>
               <View style={{ flex: 1 }}>
                 <ThemedText style={styles.privacyTitle}>
-                  {language === 'es' ? 'Apple iCloud Sync (Silencioso)' : 'Apple iCloud Sync (Silent)'}
+                  {language === 'es' ? 'iCloud Drive / Google Drive / Archivos' : 'iCloud Drive / Google Drive / Files'}
                 </ThemedText>
                 <ThemedText style={styles.privacyDesc}>
                   {language === 'es'
-                    ? 'Sincroniza automáticamente tus catas y notas entre tu iPhone y iPad de forma 100% privada.'
-                    : 'Automatically syncs your tastings and notes between your iPhone and iPad privately.'}
+                    ? 'Guarda tu archivo de respaldo (.brewstudy) en iCloud Drive o Google Drive para proteger tus catas, fotos, perfil y progreso ante desinstalaciones o cambio de teléfono.'
+                    : 'Save your backup file (.brewstudy) to iCloud Drive or Google Drive to safeguard your tastings, photos, profile, and study progress.'}
                 </ThemedText>
               </View>
             </View>
@@ -437,18 +410,8 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             {renderSettingRow(
-              '🔄',
-              language === 'es' ? 'Sincronizar con iCloud Ahora' : 'Sync with iCloud Now',
-              undefined,
-              handleManualICloudSync,
-              isSyncingICloud ? <ActivityIndicator size="small" color="#F2B824" /> : undefined
-            )}
-
-            <View style={styles.divider} />
-
-            {renderSettingRow(
               '📤',
-              language === 'es' ? 'Exportar Copia de Seguridad' : 'Export Backup File',
+              language === 'es' ? 'Guardar Copia en la Nube (Exportar)' : 'Save Backup to Cloud (Export)',
               undefined,
               handleExportBackup,
               isExporting ? <ActivityIndicator size="small" color={theme.tint} /> : undefined
@@ -458,7 +421,7 @@ export default function SettingsScreen() {
 
             {renderSettingRow(
               '📥',
-              language === 'es' ? 'Importar Copia de Seguridad' : 'Import Backup File',
+              language === 'es' ? 'Restaurar desde la Nube (Importar)' : 'Restore from Cloud (Import)',
               undefined,
               handleImportBackup,
               isImporting ? <ActivityIndicator size="small" color={theme.tint} /> : undefined
@@ -467,8 +430,8 @@ export default function SettingsScreen() {
 
           <ThemedText style={styles.backupHint}>
             {language === 'es'
-              ? '💡 Consejo: Al cambiar de teléfono, puedes sincronizar por iCloud o exportar tu copia por AirDrop, WhatsApp o Archivos.'
-              : '💡 Tip: When switching phones, sync via iCloud or export your backup via AirDrop, WhatsApp, or Files.'}
+              ? '💡 Consejo: Al guardar tu copia puedes elegir directamente "Guardar en Archivos" para almacenarla en tu iCloud Drive o Google Drive.'
+              : '💡 Tip: When exporting, choose "Save to Files" to place your backup directly in iCloud Drive or Google Drive.'}
           </ThemedText>
 
           {/* 3. Suscripción PRO / Lifetime */}
